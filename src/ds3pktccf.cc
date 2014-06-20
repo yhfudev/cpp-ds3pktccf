@@ -459,7 +459,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         itprev = itright;
     }
     // debug:
-    assert (itright == pkglst.end());
+    //assert (itright == pkglst.end());
 
     size_t off;
     std::vector<uint8_t> hdrbuf; /* buffer for MAC header and/or content */

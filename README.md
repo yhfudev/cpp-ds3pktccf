@@ -22,28 +22,34 @@ There are a few different ways you can install DS3PKTCCF:
 
 ## Examples
 
-    /* classes for NS2 */
+    /* packet for NS2 */
     class ds3packet_ns2_t : public ds3packet_t {
     public:
-        virtual ~ds3packet_ns2_t() { }
         virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
         virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf);
         virtual ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf);
+        // ...
 
     private:
         // ...
     };
 
+    /* the ccf pack class for NS2 */
     class ds3ns2_ccf_pack_t : public ds3_ccf_pack_t {
     public:
     protected:
+        virtual void recycle_packet (ds3packet_t *p);
+        virtual void drop_packet (ds3packet_t *p);
         virtual int start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id);
         virtual double current_time (void);
     };
 
+    /* the ccf unpack class for NS2 */
     class ds3ns2_ccf_unpack_t : public ds3_ccf_unpack_t {
     public:
     protected:
+        virtual void recycle_packet (ds3packet_t *p);
+        virtual void drop_packet (ds3packet_t *p);
         virtual int signify_packet (std::vector<uint8_t> & macbuffer);
         virtual int signify_piggyback (int sc, size_t request);
     };
