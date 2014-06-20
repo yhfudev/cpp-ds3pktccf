@@ -1,0 +1,51 @@
+# 一个为大多数项目设计的 Makefile, 用于 djgpp 中
+# $@: 当前规则的目的文件名，前一行冒号前部分
+# $* 删除后缀的目标名
+# $<: 依靠列表的第一个依靠文件
+# $^: 整个依靠列表
+
+EXECUTABLE := testccf
+#LIBS := alleg
+CFLAGS := -g -Wall -DTESTCCF=1 -Icache-git/include/
+CXXFLAGS := $(CFLAGS)
+
+RM-F := rm -f
+#ifneq ($(wildcard $(DJDIR)/bin/rm.exe),)
+  #RM-F := rm -f
+#else
+  #RM-F := del
+#endif
+
+SOURCES := $(wildcard *.c) $(wildcard *.cc) $(wildcard *.cpp)
+OBJS := $(patsubst %.c, %.o, $(patsubst %.cc, %.o, $(SOURCES)))
+DEPS := $(patsubst %.o, %.d, $(OBJS))
+
+MISSING_DEPS := $(filter-out $(wildcard $(DEPS)), $(DEPS))
+MISSING_DEPS_SOURCE := $(wildcard $(patsubst %.d, %.c, $(MISSING_DEPS)) $(patsubst %.d, %.cc, $(MISSING_DEPS)))
+CPPFLAGS += -MD
+
+.PHONY: everything deps objs clean veryclean rebuild
+
+everything: $(EXECUTABLE)
+
+deps: $(DEPS)
+
+objs: $(OBJS)
+
+clean:
+	@$(RM-F) *.o
+	@$(RM-F) *.d
+
+veryclean: clean
+	@$(RM-F) $(EXECUTABLE)
+
+rebuild: veryclean everything
+
+ifneq ($(MISSING_DEPS),)
+$(MISSING_DEPS):
+	@$(RM-F) $(patsubst %.d, %.o, $@)
+endif
+
+-include $(DEPS)
+$(EXECUTABLE): $(OBJS)
+	g++ -o $(EXECUTABLE) $(OBJS) $(addprefix -l, $(LIBS))
