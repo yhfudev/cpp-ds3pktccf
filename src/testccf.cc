@@ -251,6 +251,7 @@ my_drop_packet (ds3packet_t *p)
 int
 test_pack (void)
 {
+    int ret = 0;
     size_t i = 0;
     int j = 0;
     double next_gt_time = 0.0;
@@ -344,11 +345,12 @@ test_pack (void)
     for (i = 0; i < NUM_PKT; i ++) {
         // compare the packet
         pktns2 = dynamic_cast<ds3packet_ns2_t *>(g_pkt_in_recycle[i]);
-        assert (NULL != pktns2);
+        REQUIRE (NULL != pktns2);
         pktns1 = dynamic_cast<ds3packet_ns2_t *>(get_channel_packet(3 + i));
-        assert (NULL != pktns1);
+        REQUIRE (NULL != pktns1);
         if (*pktns1 != *pktns2) {
             std::cout << "packet(" << i << ") not equal!" << std::endl;
+            ret = -1;
         }
     }
 
@@ -360,7 +362,7 @@ test_pack (void)
             delete pkt;
         }
     }
-    return 0;
+    return ret;
 }
 
 /*****************************************************************************/

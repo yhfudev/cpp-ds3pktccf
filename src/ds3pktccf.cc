@@ -232,18 +232,20 @@ ds3packet_t::get_pkt_bytes (size_t pos, std::vector<uint8_t> & nbsbuf, size_t sz
 ssize_t
 ds3packet_t::get_pkt_bytes (size_t pos, uint8_t *nbsbuf, size_t szbuf)
 {
-    size_t szcur = 0;
+    size_t szcpy = 0;
+    size_t szcur = 0; /* the buffer used */
     size_t szhdr = this->hdr_to_nbs (NULL, 0);
 
-    if (pos - szcur < szhdr) {
+    if (pos < szhdr) {
         /* part of content is the header */
-        if (szhdr <= szbuf) {
+        if (szhdr + szcur <= szbuf) {
             /* there's enough buffer from the user */
             hdr_to_nbs (nbsbuf + szcur, szbuf - szcur);
             if (pos > 0) {
                 assert (szhdr > pos);
                 memmove (nbsbuf + szcur, nbsbuf + szcur + pos, szhdr - pos);
             }
+            szcur += (szhdr - pos);
         } else {
             // create a new buffer
             std::vector<uint8_t> buffer1;
@@ -251,12 +253,29 @@ ds3packet_t::get_pkt_bytes (size_t pos, uint8_t *nbsbuf, size_t szbuf)
             hdr_to_nbs (&buffer1[0], buffer1.size());
             buffer1.resize(szhdr);
             assert (szhdr >= pos);
-            std::copy (buffer1.begin(), buffer1.begin() + (szhdr - pos), nbsbuf + szcur);
+            assert (szhdr > szbuf);
+            szcpy = szhdr - pos;
+            if (szcpy + szcur > szbuf) {
+                szcpy = szbuf - szcur;
+            }
+            assert (szcpy + pos < buffer1.size());
+            std::copy (buffer1.begin() + pos, buffer1.begin() + pos + szcpy, nbsbuf + szcur);
+            szcur += szcpy;
         }
-        szcur += (szhdr - pos);
     }
     if (szcur < szbuf) {
-        std::copy (this->buffer.begin(), this->buffer.begin() + (szbuf - szcur), nbsbuf + szcur);
+        size_t newoff = 0;
+        if (pos > szhdr) {
+            newoff = pos - szhdr;
+        }
+        if (newoff >= this->buffer.size()) {
+            return szcur;
+        }
+        szcpy = szbuf - szcur;
+        if (szcpy + newoff > this->buffer.size()) {
+            szcpy = this->buffer.size() - newoff;
+        }
+        std::copy (this->buffer.begin() + newoff, this->buffer.begin() + newoff + szcpy, nbsbuf + szcur);
         szcur = szbuf;
     }
     return szcur;
@@ -475,7 +494,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             if ((*itleft)->get_header().offmac < 1) {
                 // there's no data before the first MAC header, or no MAC header
                 assert ((*itleft)->get_header().offmac == 0);
-#if 1
+
                 size_t off1 = (itleft - pkglst.begin());
                 size_t off2 = (itright - pkglst.begin());
                 assert (off2 >= off1);
@@ -484,15 +503,10 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                     assert (pkglst.begin() == pkglst.end());
                     itleft = itright = pkglst.end();
                 } else {
-                    itleft = pkglst.begin() + off1;
+                    itleft = pkglst.begin() + (off1 - 1);
                     itright = pkglst.begin() + (off2 - 1);
                 }
-#else
-                std::vector<ds3packet_ccf_t *>::iterator itdel = itleft;
-                itleft ++;
-                // remove this segment, since it is done
-                pkglst.erase(itdel);
-#endif
+
             } else {
                 itleft ++;
             }
@@ -502,6 +516,8 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             ssize_t szmhdr = -1;
             ds3hdr_mac_t machdr;
             memset (&machdr, 0, sizeof (machdr));
+            bool flg_data_left = false; /* use the left data of offmac to fill hdrbuf */
+            bool flg_data_right = false;  /* use the right data of procpos to fill hdrbuf */
 
             if (hdrbuf.size() <= 0) {
                 assert (hdrbuf.size() == 0);
@@ -521,6 +537,8 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                     if (hdrbuf.size() < (size_t)(szmhdr + machdr.length)) {
                         itleft ++;
                         continue;
+                    } else {
+                        flg_data_right = true;
                     }
                 }
 
@@ -562,6 +580,15 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                         // no enough content bytes
                         // wait for next one?
                         flg_continue = true;
+                    } else {
+                        // data is enough to extract,
+                        // the data will be throw away after extraction in spit of success of fail
+                        assert (szmhdr > 0);
+                        if ((*itleft)->get_header().pfi == 1) {
+                            flg_data_left = true;
+                        } else {
+                            flg_data_right = true;
+                        }
                     }
                 }
                 if (flg_corrupted) {
@@ -575,13 +602,12 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                             it1st ++;
                         }
                         if (it1st != itleft) {
-#if 1 // DEBUG
                             std::vector<ds3packet_ccf_t *>::iterator ittmp = it1st;
                             for (; ittmp != itleft; ittmp ++) {
                                 this->drop_packet( *ittmp );
                             }
-#endif
-#if 1
+
+                            std::cout << "pkg end-begin=" << (pkglst.end() - pkglst.begin()) << std::endl;
                             size_t off1 = (itleft - pkglst.begin());
                             size_t off2 = (itright - pkglst.begin());
                             assert (off2 >= off1);
@@ -590,12 +616,9 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                                 assert (pkglst.begin() == pkglst.end());
                                 itleft = itright = pkglst.end();
                             } else {
-                                itleft = pkglst.begin() + off1;
+                                itleft = pkglst.begin() + (off1 - 1);
                                 itright = pkglst.begin() + (off2 - 1);
                             }
-#else
-                            pkglst.erase (it1st, itleft);
-#endif
                         }
                     }
                     it1st = itleft;
@@ -622,14 +645,20 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
 #else // 1
                 if (hdrbuf.size() >= (size_t)(szmhdr + machdr.length)) {
                     assert (hdrbuf.size() >= (size_t)(szmhdr + machdr.length));
-                    size_t szbk = (hdrbuf.size() - (size_t)(szmhdr + machdr.length));
-                    size_t szrest = (cntbufref.end() - (cntbufref.begin() + off));
-                    size_t szadd = szrest - szbk;
-                    /* resize the buffer according to machdr.length */
-                    std::cout << "the size of data in the buffer not belonging to the packet: " << szbk << std::endl;
-                    std::cout << "the size of data were read in current segment: " << szrest << std::endl;
-                    std::cout << "set the next offset from " << off << " to " << (off + szadd) << std::endl;
-                    (*itleft)->set_procpos (off + szadd);
+                    if (flg_data_left) {
+                        // do nothing
+                    }
+                    if (flg_data_right) {
+                        size_t szbk = (hdrbuf.size() - (size_t)(szmhdr + machdr.length));
+                        size_t szrest = (cntbufref.end() - (cntbufref.begin() + off));
+                        size_t szadd = szrest - szbk;
+                        /* resize the buffer according to machdr.length */
+                        std::cout << "the size of data in the buffer not belonging to the packet: " << szbk << std::endl;
+                        std::cout << "the size of data were read in current segment: " << szrest << std::endl;
+                        std::cout << "set the next offset from " << off << " to " << (off + szadd) << std::endl;
+                        (*itleft)->set_procpos (off + szadd);
+                    }
+
                     hdrbuf.resize((size_t)(szmhdr + machdr.length));
                     /* extract the packet */
                     this->signify_packet (hdrbuf);
@@ -643,14 +672,13 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                             it1st ++;
                         }
                         if (it1st != itleft) {
-#if 1 // DEBUG
+
                             std::vector<ds3packet_ccf_t *>::iterator ittmp = it1st;
                             for (; ittmp != itleft; ittmp ++) {
                                 this->recycle_packet( *ittmp );
                             }
-#endif
 
-#if 1
+                            std::cout << "pkg end-begin=" << (pkglst.end() - pkglst.begin()) << std::endl;
                             size_t off1 = (itleft - pkglst.begin());
                             size_t off2 = (itright - pkglst.begin());
                             assert (off2 >= off1);
@@ -659,12 +687,9 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                                 assert (pkglst.begin() == pkglst.end());
                                 itleft = itright = pkglst.end();
                             } else {
-                                itleft = pkglst.begin() + off1;
+                                itleft = pkglst.begin() + (off1 - 1);
                                 itright = pkglst.begin() + (off2 - 1);
                             }
-#else
-                            pkglst.erase (it1st, itleft);
-#endif
                         }
                     }
                     it1st = itleft;
@@ -756,7 +781,8 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
                 szNext = szMax - szCur;
             }
             /* fill the buffer */
-            pktlst[0]->get_pkt_bytes (pktlst[0]->get_procpos(), buffer, szNext);
+            ssize_t ret1 = pktlst[0]->get_pkt_bytes (pktlst[0]->get_procpos(), buffer, szNext);
+            assert (ret1 == szNext);
             szCur += szNext;
             pktlst[0]->set_procpos (pktlst[0]->get_procpos() + szNext);
             if (pktlst[0]->get_procpos() >= pktlst[0]->get_size()) {

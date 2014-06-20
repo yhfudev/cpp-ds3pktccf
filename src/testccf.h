@@ -21,7 +21,7 @@ public:
     virtual ~ds3packet_ns2_t() { std::cout << "Destroy " << __func__ << std::endl;}
 
     bool operator == (const ds3packet_ns2_t & rhs);
-    bool operator != (const ds3packet_ns2_t & rhs) { return (*this == rhs); }
+    bool operator != (const ds3packet_ns2_t & rhs) { return ! (*this == rhs); }
 
     virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf); /**< pack content to a buffer, if the return value > szbuf, it means the caller should use a larger buffer */
     virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf); /**< unpack content from a buffer, if the return value > szbuf, it means the caller should use a larger buffer */
@@ -56,7 +56,7 @@ protected:
 class ds3ns2_ccf_unpack_t : public ds3_ccf_unpack_t {
 public:
 protected:
-    virtual void recycle_packet (ds3packet_t *p) { /** we don't need to reenter again, since the CCF is already in global queue: my_recycle_packet (p);*/ } /**< a processed packet need to be deleted */
+    virtual void recycle_packet (ds3packet_t *p) { std::cout << "Recycle CCF segment: " << std::endl; p->dump(); /** we don't need to reenter again, since the CCF is already in global queue: my_recycle_packet (p);*/ } /**< a processed packet need to be deleted */
     virtual void drop_packet (ds3packet_t *p) { std::cout << "Warning: CCF segment unprocessed/corrupted: " << std::endl; p->dump(); /*my_drop_packet (p);*/ } /**< a un-processed packet need to be drop (caused by corruption?) */
     virtual int signify_packet (std::vector<uint8_t> & macbuffer); /**< signify that a new MAC packet was extracted from the segments received */
     virtual int signify_piggyback (int sc, size_t request); /**< signify that a piggyback request was extracted from the segments received */
