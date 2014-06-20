@@ -202,6 +202,17 @@ ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethdr)
     return (ret);
 }
 
+/**
+ * @brief get the raw data bytes(network byte sequence) of the packet
+ *
+ * @param pos : [in] the start position of the byte sequence
+ * @param nbsbuf : [in,out] the buffer to be filled
+ * @param szbuf : [in] the size requested to be filled
+ *
+ * @return the size of data copied to buffer, >0 on success, < 0 on error
+ *
+ * get the raw data bytes(network byte sequence) of the packet
+ */
 ssize_t
 ds3packet_t::get_pkt_bytes (size_t pos, std::vector<uint8_t> & nbsbuf, size_t szbuf)
 {
@@ -219,15 +230,15 @@ ds3packet_t::get_pkt_bytes (size_t pos, std::vector<uint8_t> & nbsbuf, size_t sz
 }
 
 /**
- * @brief get the raw data bytes of the packet
+ * @brief get the raw data bytes(network byte sequence) of the packet
  *
  * @param pos : [in] the start position of the byte sequence
- * @param nbsbuf : [in,out] the buffer to be filled with the data bytes
- * @param szbuf : [in] the size  of the buffer passed in
+ * @param nbsbuf : [in,out] the buffer to be filled
+ * @param szbuf : [in] the size requested to be filled
  *
  * @return the size of data copied to buffer, >0 on success, < 0 on error
  *
- * get the raw data bytes of the packet
+ * get the raw data bytes(network byte sequence) of the packet
  */
 ssize_t
 ds3packet_t::get_pkt_bytes (size_t pos, uint8_t *nbsbuf, size_t szbuf)
@@ -281,6 +292,12 @@ ds3packet_t::get_pkt_bytes (size_t pos, uint8_t *nbsbuf, size_t szbuf)
     return szcur;
 }
 
+/**
+ * @brief set the content of the packet, not include the header
+ * @param nbsbuf : the buffer contains the content
+ * @param szbuf : the size of the data in the buffer
+ * @return 0 on success, < 0 on error
+ */
 int
 ds3packet_t::set_content (uint8_t *nbsbuf, size_t szbuf)
 {
@@ -334,6 +351,10 @@ ds3packet_ccf_t::from_nbs (uint8_t *nbsbuf, size_t szbuf)
     return szbuf;
 }
 
+/**
+ * @brief dump the content
+ * @return N/A
+ */
 void
 ds3packet_t::dump_content (void)
 {
@@ -363,22 +384,28 @@ ds3packet_ccf_t::dump (void)
     this->dump_content ();
 }
 
-bool
+/**
+ * @brief check if (i < j)
+ * @param i : the left hand of the value
+ * @param j : the right hand of the value
+ * @return true if (i < j), false otherwise
+ */
+static bool
 compare_ccfpktp (ds3packet_ccf_t * i, ds3packet_ccf_t * j)
 {
     return (i->get_header().sequence < j->get_header().sequence);
 }
 
 /**
- * @brief try to extract DOCSIS MAC packet(s) from CCF segments
+ * @brief push a segment received for unpacking, try to extract DOCSIS MAC packet(s) from CCF segments
  *
- * @param p : [in] a CCF segment
+ * @param p : [in] a CCF segment be pushed into the queue
  *
  * @return the number of segments to be sent, >0 on success, < 0 on error
  *
- * try to extract DOCSIS MAC packet(s) from the CCF segments
+ * push a segment received for unpacking, try to extract DOCSIS MAC packet(s) from CCF segments
  *
- * in this function, we use the segment header's field offmax as the pointer to process MAC header,
+ * In this function, we use the segment header's field offmax as the pointer to process MAC header,
  * we also use it as a pointer to indicate if the data before the 1st MAC hdr is processed or not;
  * there's another data pointer ds3packet_t.pos_next to indicate the next MAC hdr.
  */
@@ -719,13 +746,13 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
 }
 
 /**
- * @brief add a new packet to the sending list and send segment according current grants
+ * @brief push a new packet to the sending list, and send segment(s) according current grants
  *
  * @param p : [in] the packet
  *
  * @return the number of segments to be sent, >0 on success, < 0 on error
  *
- * add a new packet to the sending list and send segment according current grants.
+ * push a new packet to the sending list, and send segment(s) according current grants.
  *
  * It's assumed that the grants are exist for the packets in the list,
  * so the size of grants are always larger than(>=) the ``requested packet'' size.

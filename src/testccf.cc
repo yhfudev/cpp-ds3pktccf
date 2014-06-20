@@ -9,9 +9,76 @@
 
 #include <stdio.h>
 
+#include "ds3pktccf.h"
 #include "testccf.h"
 
 int add_channel_packet (ds3packet_t * p);
+
+#if 0
+void
+ds3_dump_packet (ds3packet_t *p)
+{
+    bool flg_proc = false;
+    ds3packet_ns2_t *pktns2 = NULL;
+    ds3packet_ccf_t *pktccf = NULL;
+
+    pktns2 = dynamic_cast<ds3packet_ns2_t *>(p);
+    if (pktns2) {
+        ds3hdr_mac_t & machdr = pktns2->get_header();
+        std::cout << "MAC pkt"
+            //<< ", type: " << typeid(p).name()
+            << ", hdr.sequence=" << machdr.sequence
+            << ", cnt.sz="      << p->get_content_ref().size() << "/" << p->get_size()
+            << ", hdr.length="  << machdr.length
+            << std::endl;
+        flg_proc = true;
+    } else {
+        pktccf = dynamic_cast<ds3packet_ccf_t *>(p);
+    }
+
+    if (pktccf) {
+        ds3hdr_ccf_t & ccfhdr = pktccf->get_header();
+        std::cout << "CCF pkt"
+            //<< ", type: "       << typeid(p).name()
+            << ", hdr.sequence=" << ccfhdr.sequence
+            << ", cnt.sz="      << p->get_content_ref().size() << "/" << p->get_size()
+            << ", hdr.pfi="     << ccfhdr.pfi
+            << ", hdr.offmac="  << ccfhdr.offmac
+            << ", hdr.sc="      << ccfhdr.sc
+            << ", hdr.request=" << ccfhdr.request
+            << ", hdr.hcs="     << ccfhdr.hcs
+            << std::endl;
+        flg_proc = true;
+    }
+
+    if (! flg_proc) {
+        // it's a generic ds3packet_t ?
+        std::cout << "Fatal: unknown packet"
+            //<< ", type: " << typeid(p).name()
+            << ", cnt.sz=" << p->get_content_ref().size() << "/" << p->get_size() << std::endl;
+    }
+    std::cout << "   content: " ;// << std::endl;
+    std::vector<uint8_t>::iterator itb = p->get_content_ref().begin();
+    std::vector<uint8_t>::iterator ite = p->get_content_ref().end();
+    for (; itb != ite; itb ++ ) {
+        printf (" %02X", *itb);
+    }
+    std::cout << std::endl;
+}
+#endif
+
+void
+ds3packet_ns2_t::dump (void)
+{
+    ds3hdr_mac_t & machdr = this->get_header();
+    std::cout << "MAC pkt"
+        //<< ", type: " << typeid(p).name()
+        << ", hdr.sequence=" << machdr.sequence
+        << ", cnt.sz="      << this->get_content_ref().size() << "/" << this->get_size()
+        << ", hdr.length="  << machdr.length
+        << std::endl;
+    this->dump_content ();
+}
 
 ssize_t
 ds3packet_ns2_t::to_nbs (uint8_t *nbsbuf, size_t szbuf)
@@ -67,36 +134,6 @@ ds3packet_ns2_t::from_nbs (uint8_t *nbsbuf, size_t szbuf)
     return szcur;
 }
 
-int
-ds3ns2_ccf_unpack_t::signify_piggyback (int sc, size_t request)
-{
-    std::cout << "Got a unpacked piggyback request: sc=" << sc << ", request=" << request << std::endl;
-    // append the assemblied packet, we'll delete tht packet later
-    return 0;
-}
-
-int
-ds3ns2_ccf_unpack_t::signify_packet (std::vector<uint8_t> & macbuffer)
-{
-    assert (macbuffer.size() > 0);
-    // append the assemblied packet, we'll delete tht packet later
-    ds3packet_ns2_t *p = new ds3packet_ns2_t();
-    assert (NULL != p);
-    p->from_nbs (&macbuffer[0], macbuffer.size());
-    std::cout << "Got a unpacked MAC packet:" << std::endl;
-    add_channel_packet (p);
-    return 0;
-}
-
-int
-ds3ns2_ccf_pack_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id)
-{
-    std::cout << "Got a packed CCF segment: " << std::endl;
-    std::cout << "  -- start timer: tm=" << abs_time << ", event=" << evt << ", pkt.size=" << p->get_size() << ", channelId=" << channel_id << std::endl;
-    add_channel_packet (p);
-    return 0;
-}
-
 //bool operator < (const ds3packet_ns2_t & lhs, const ds3packet_ns2_t & rhs);
 bool
 ds3packet_ns2_t::operator == (const ds3packet_ns2_t & rhs)
@@ -118,71 +155,35 @@ ds3packet_ns2_t::operator == (const ds3packet_ns2_t & rhs)
     return true;
 }
 
-void
-ds3packet_ns2_t::dump (void)
+int
+ds3ns2_ccf_pack_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id)
 {
-    ds3hdr_mac_t & machdr = this->get_header();
-    std::cout << "MAC pkt"
-        //<< ", type: " << typeid(p).name()
-        << ", hdr.sequence=" << machdr.sequence
-        << ", cnt.sz="      << this->get_content_ref().size() << "/" << this->get_size()
-        << ", hdr.length="  << machdr.length
-        << std::endl;
-    this->dump_content ();
+    std::cout << "Got a packed CCF segment: " << std::endl;
+    std::cout << "  -- start timer: tm=" << abs_time << ", event=" << evt << ", pkt.size=" << p->get_size() << ", channelId=" << channel_id << std::endl;
+    add_channel_packet (p);
+    return 0;
 }
 
-#if 0
-void
-ds3_dump_packet (ds3packet_t *p)
+int
+ds3ns2_ccf_unpack_t::signify_piggyback (int sc, size_t request)
 {
-    bool flg_proc = false;
-    ds3packet_ns2_t *pktns2 = NULL;
-    ds3packet_ccf_t *pktccf = NULL;
-
-    pktns2 = dynamic_cast<ds3packet_ns2_t *>(p);
-    if (pktns2) {
-        ds3hdr_mac_t & machdr = pktns2->get_header();
-        std::cout << "MAC pkt"
-            //<< ", type: " << typeid(p).name()
-            << ", hdr.sequence=" << machdr.sequence
-            << ", cnt.sz="      << p->get_content_ref().size() << "/" << p->get_size()
-            << ", hdr.length="  << machdr.length
-            << std::endl;
-        flg_proc = true;
-    } else {
-        pktccf = dynamic_cast<ds3packet_ccf_t *>(p);
-    }
-
-    if (pktccf) {
-        ds3hdr_ccf_t & ccfhdr = pktccf->get_header();
-        std::cout << "CCF pkt"
-            //<< ", type: "       << typeid(p).name()
-            << ", hdr.sequence=" << ccfhdr.sequence
-            << ", cnt.sz="      << p->get_content_ref().size() << "/" << p->get_size()
-            << ", hdr.pfi="     << ccfhdr.pfi
-            << ", hdr.offmac="  << ccfhdr.offmac
-            << ", hdr.sc="      << ccfhdr.sc
-            << ", hdr.request=" << ccfhdr.request
-            << ", hdr.hcs="     << ccfhdr.hcs
-            << std::endl;
-        flg_proc = true;
-    }
-
-    if (! flg_proc) {
-        // it's a generic ds3packet_t ?
-        std::cout << "Fatal: unknown packet"
-            //<< ", type: " << typeid(p).name()
-            << ", cnt.sz=" << p->get_content_ref().size() << "/" << p->get_size() << std::endl;
-    }
-    std::cout << "   content: " ;// << std::endl;
-    std::vector<uint8_t>::iterator itb = p->get_content_ref().begin();
-    std::vector<uint8_t>::iterator ite = p->get_content_ref().end();
-    for (; itb != ite; itb ++ ) {
-        printf (" %02X", *itb);
-    }
-    std::cout << std::endl;
+    std::cout << "Got a unpacked piggyback request: sc=" << sc << ", request=" << request << std::endl;
+    // append the assemblied packet, we'll delete tht packet later
+    return 0;
 }
-#endif
+
+int
+ds3ns2_ccf_unpack_t::signify_packet (std::vector<uint8_t> & macbuffer)
+{
+    assert (macbuffer.size() > 0);
+    // append the assemblied packet, we'll delete tht packet later
+    ds3packet_ns2_t *p = new ds3packet_ns2_t();
+    assert (NULL != p);
+    p->from_nbs (&macbuffer[0], macbuffer.size());
+    std::cout << "Got a unpacked MAC packet:" << std::endl;
+    add_channel_packet (p);
+    return 0;
+}
 
 /*****************************************************************************/
 #if 1 //TESTCCF

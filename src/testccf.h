@@ -15,21 +15,14 @@ void my_recycle_packet (ds3packet_t *p);
 void my_drop_packet (ds3packet_t *p);
 double my_time(void);
 
-/** packet for NS2 */
+/** @brief packet for NS2 */
 class ds3packet_ns2_t : public ds3packet_t {
 public:
     virtual ~ds3packet_ns2_t() { std::cout << "Destroy " << __func__ << std::endl;}
 
-    bool operator == (const ds3packet_ns2_t & rhs);
-    bool operator != (const ds3packet_ns2_t & rhs) { return ! (*this == rhs); }
-
-    virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf); /**< pack content to a buffer, if the return value > szbuf, it means the caller should use a larger buffer */
-    virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf); /**< unpack content from a buffer, if the return value > szbuf, it means the caller should use a larger buffer */
-
-    virtual ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { machdr.length = this->get_content_ref().size(); return ds3hdr_mac_to_nbs (nbsbuf, szbuf, &(this->machdr)); } /**< get bytes of the packet, include MAC header */
-
-    int set_header (ds3hdr_mac_t * mhdr) { if (NULL == mhdr) {return -1;} memmove (&(this->machdr), mhdr, sizeof (*mhdr)); return 0; } /**< set the NS2 packet header */
-    ds3hdr_mac_t & get_header (void) { return machdr; }
+    virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
+    virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf);
+    virtual ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { machdr.length = this->get_content_ref().size(); return ds3hdr_mac_to_nbs (nbsbuf, szbuf, &(this->machdr)); }
 
     virtual int set_content (uint8_t *nbsbuf, size_t szbuf) { if (ds3packet_t::set_content(nbsbuf, szbuf) >= 0) { machdr.length = szbuf; return 0; } return -1; }
     virtual int set_content (std::vector<uint8_t> & newbuf) { if (ds3packet_t::set_content(newbuf) >= 0) { machdr.length = newbuf.size(); return 0; } return -1; }
@@ -38,28 +31,34 @@ public:
 
     virtual void dump (void);
 
+    int set_header (ds3hdr_mac_t * mhdr) { if (NULL == mhdr) {return -1;} memmove (&(this->machdr), mhdr, sizeof (*mhdr)); return 0; } /**< set the NS2 packet header */
+    ds3hdr_mac_t & get_header (void) { return machdr; } /**< get a reference of the MAC header */
+
+    bool operator == (const ds3packet_ns2_t & rhs); /**< check if two ns2 packets are identical */
+    bool operator != (const ds3packet_ns2_t & rhs) { return ! (*this == rhs); } /**< check if two ns2 packets are not identical */
+
 private:
     ds3hdr_mac_t machdr;
 };
 
-/** the ccf pack class for NS2 */
+/** @brief the ccf pack class for NS2 */
 class ds3ns2_ccf_pack_t : public ds3_ccf_pack_t {
 public:
 protected:
-    virtual void recycle_packet (ds3packet_t *p) { my_recycle_packet (p); } /**< a processed packet need to be deleted */
-    virtual void drop_packet (ds3packet_t *p) { my_drop_packet (p); } /**< a un-processed packet need to be drop (caused by corruption?) */
+    virtual void recycle_packet (ds3packet_t *p) { my_recycle_packet (p); }
+    virtual void drop_packet (ds3packet_t *p) { my_drop_packet (p); }
     virtual int start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id);
     virtual double current_time (void) { return my_time(); }
 };
 
-/** the ccf unpack class for NS2 */
+/** @brief the ccf unpack class for NS2 */
 class ds3ns2_ccf_unpack_t : public ds3_ccf_unpack_t {
 public:
 protected:
-    virtual void recycle_packet (ds3packet_t *p) { std::cout << "Recycle CCF segment: " << std::endl; p->dump(); /** we don't need to reenter again, since the CCF is already in global queue: my_recycle_packet (p);*/ } /**< a processed packet need to be deleted */
-    virtual void drop_packet (ds3packet_t *p) { std::cout << "Warning: CCF segment unprocessed/corrupted: " << std::endl; p->dump(); /*my_drop_packet (p);*/ } /**< a un-processed packet need to be drop (caused by corruption?) */
-    virtual int signify_packet (std::vector<uint8_t> & macbuffer); /**< signify that a new MAC packet was extracted from the segments received */
-    virtual int signify_piggyback (int sc, size_t request); /**< signify that a piggyback request was extracted from the segments received */
+    virtual void recycle_packet (ds3packet_t *p) { std::cout << "Recycle CCF segment: " << std::endl; p->dump(); /** we don't need to reenter again, since the CCF is already in global queue: my_recycle_packet (p);*/ }
+    virtual void drop_packet (ds3packet_t *p) { std::cout << "Warning: CCF segment unprocessed/corrupted: " << std::endl; p->dump(); /*my_drop_packet (p);*/ }
+    virtual int signify_packet (std::vector<uint8_t> & macbuffer);
+    virtual int signify_piggyback (int sc, size_t request);
 };
 
 #if TESTCCF
