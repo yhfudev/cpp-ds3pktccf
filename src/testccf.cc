@@ -219,6 +219,24 @@ add_channel_packet (ds3packet_t * p)
     return 0;
 }
 
+void
+shuffer_channel_packets (void)
+{
+    int i;
+    int nlast = g_pkt_in_channel.size();
+    ds3packet_t * pkt;
+    for (i = 0; i < nlast; i ++) {
+        int rand1 = rand() % nlast;
+        int rand2 = rand() % nlast;
+        if (rand1 == rand2) {
+            continue;
+        }
+        pkt = g_pkt_in_channel[rand1];
+        g_pkt_in_channel[rand1] = g_pkt_in_channel[rand2];
+        g_pkt_in_channel[rand2] = pkt;
+    }
+}
+
 int
 set_channel_packet (int idx, ds3packet_t * p)
 {
@@ -263,6 +281,9 @@ my_drop_packet (ds3packet_t *p)
 
 #define NUM_PKT 5
 
+/**
+ * @brief test pack/unpack
+ */
 int
 test_pack (void)
 {
@@ -342,6 +363,19 @@ test_pack (void)
     //REQUIRE ( 3 == get_channel_packet_length() );
     size_t nlast = get_channel_packet_length();
 
+    // randomize the packets in the channel
+    shuffer_channel_packets ();
+
+    std::cout << "AFTER shuffer, channel packet # = " << get_channel_packet_length() << std::endl;
+    for (i = 0; i < (size_t)get_channel_packet_length(); i ++) {
+        pkt = get_channel_packet(i);
+        if (NULL == pkt) {
+            std::cout << "channel pkt NULL" << std::endl;
+        } else {
+            pkt->dump();
+        }
+    }
+
     next_gt_time = 1.0;
     my_set_time (next_gt_time);
 
@@ -360,10 +394,11 @@ test_pack (void)
     ds3packet_ns2_t * pktns1 = NULL;
     for (i = 0; i < NUM_PKT; i ++) {
         // compare the packet
-        pktns2 = dynamic_cast<ds3packet_ns2_t *>(g_pkt_in_recycle[i]);
-        REQUIRE (NULL != pktns2);
         pktns1 = dynamic_cast<ds3packet_ns2_t *>(get_channel_packet(nlast + i));
         REQUIRE (NULL != pktns1);
+        assert (pktns1->get_header().sequence < NUM_PKT);
+        pktns2 = dynamic_cast<ds3packet_ns2_t *>(g_pkt_in_recycle[pktns1->get_header().sequence]);
+        REQUIRE (NULL != pktns2);
         if (*pktns1 != *pktns2) {
             std::cout << "packet(" << i << ") not equal!" << std::endl;
             ret = -1;

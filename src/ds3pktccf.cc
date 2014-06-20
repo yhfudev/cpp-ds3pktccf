@@ -458,6 +458,8 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         }
         itprev = itright;
     }
+    // debug:
+    assert (itright == pkglst.end());
 
     size_t off;
     std::vector<uint8_t> hdrbuf; /* buffer for MAC header and/or content */
@@ -559,6 +561,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                 assert ((*itleft)->get_header().pfi == 1);
                 it1st = itleft;
                 hdrbuf.insert (hdrbuf.end(), cntbufref.begin() + off, cntbufref.end());
+                flg_data_right = true;
                 // try to find a new MAC header
                 szmhdr = ds3hdr_mac_from_nbs (&hdrbuf[0], hdrbuf.size(), &machdr);
                 if (szmhdr <= 0) {
@@ -571,8 +574,6 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                     if (hdrbuf.size() < (size_t)(szmhdr + machdr.length)) {
                         itleft ++;
                         continue;
-                    } else {
-                        flg_data_right = true;
                     }
                 }
 
@@ -584,11 +585,13 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                     // this should be the last segment of the packet
                     // attach the content from the buffer to hdrbuf by size of offmac
                     hdrbuf.insert (hdrbuf.end(), cntbufref.begin(), cntbufref.begin() + (*itleft)->get_header().offmac);
+                    flg_data_left = true;
                 } else {
                     // this whole segment is a part of the packet
                     assert ((*itleft)->get_procpos() == 0);
                     assert (off == (*itleft)->get_procpos());
                     hdrbuf.insert (hdrbuf.end(), cntbufref.begin() + off, cntbufref.end());
+                    flg_data_right = true;
                 }
                 szmhdr = ds3hdr_mac_from_nbs (&hdrbuf[0], hdrbuf.size(), &machdr);
                 if (szmhdr <= 0) {
@@ -618,11 +621,6 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                         // data is enough to extract,
                         // the data will be throw away after extraction in spit of success of fail
                         assert (szmhdr > 0);
-                        if ((*itleft)->get_header().pfi == 1) {
-                            flg_data_left = true;
-                        } else {
-                            flg_data_right = true;
-                        }
                     }
                 }
                 if (flg_corrupted) {
@@ -663,7 +661,9 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                     if ( (*itleft)->get_procpos() < (*itleft)->get_header().offmac ) {
                         (*itleft)->set_procpos ((*itleft)->get_header().offmac);
                     }
-                    (*itleft)->get_header().offmac = 0;
+                    if (flg_data_left) {
+                        (*itleft)->get_header().offmac = 0;
+                    }
 #endif // 3
 #endif // 2
                 }
@@ -734,7 +734,9 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                     if ( (*itleft)->get_procpos() < (*itleft)->get_header().offmac ) {
                         (*itleft)->set_procpos ((*itleft)->get_header().offmac);
                     }
-                    (*itleft)->get_header().offmac = 0;
+                    if (flg_data_left) {
+                        (*itleft)->get_header().offmac = 0;
+                    }
 #endif // 3
 #endif // 2
                 } else {
