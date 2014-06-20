@@ -27,6 +27,13 @@
 ssize_t
 ds3hdr_ccf_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_ccf_t * refhdr)
 {
+    /* DOCSIS 3.1: 6.2.1.2
+     * "Within the MAC layer, when numeric quantities are represented by more than one octet (i.e., 16-bit and 32-bit
+values), the octet containing the most-significant bits is the first transmitted on the wire. This is sometimes called
+byte-big-endian order."
+     * So,
+     *   we convert the data to network byte sequence (big-endian), and the left most is the high bit(use "<< #" to shift in C),
+     */
     uint16_t v16 = 0;
     uint8_t * p = nbsbuf;
 
@@ -44,18 +51,18 @@ ds3hdr_ccf_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_ccf_t * refhdr)
         return -1;
     }
 
-    v16 = refhdr->offmac << 2;
+    v16 = refhdr->offmac;
     if (refhdr->pfi) {
-        v16 |= 0x01;
+        v16 |= 0x8000; // (0x01 << 15);
     }
     if (refhdr->r) {
-        v16 |= 0x02;
+        v16 |= 0x4000; // (0x01 << 14);
     }
     v16 = htons (v16);
     memmove (p, &v16, sizeof (v16));
     p += sizeof(v16);
 
-    v16 = (refhdr->sequence & 0x1FFF) | ((refhdr->sc & 0x07) << 13);
+    v16 = (refhdr->sequence << 3) | (refhdr->sc & 0x07);
     v16 = htons (v16);
     memmove (p, &v16, sizeof (v16));
     p += sizeof(v16);
@@ -100,18 +107,18 @@ ds3hdr_ccf_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_ccf_t * rethdr)
     memset (rethdr, 0, sizeof (*rethdr));
 
     v16 = ntohs (*((uint16_t *)p));
-    if (v16 & 0x01) {
+    if (v16 & 0x8000) {
         rethdr->pfi = 1;
     }
-    if (v16 & 0x02) {
+    if (v16 & 0x4000) {
         rethdr->r = 1;
     }
-    rethdr->offmac = (v16 >> 2);
+    rethdr->offmac = v16 & 0x3FFF;
     p = p + 2;
 
     v16 = ntohs (*((uint16_t *)p));
-    rethdr->sequence = v16 & 0x1FFF;
-    rethdr->sc = (v16 >> 13) & 0x07;
+    rethdr->sequence = (v16 >> 3);
+    rethdr->sc = v16 & 0x07;
     p = p + 2;
 
     rethdr->request = ntohs (*((uint16_t *)p));

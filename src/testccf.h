@@ -38,7 +38,7 @@ public:
     bool operator != (const ds3packet_ns2_t & rhs) { return ! (*this == rhs); } /**< check if two ns2 packets are not identical */
 
 private:
-    ds3hdr_mac_t machdr;
+    ds3hdr_mac_t machdr; /**< the MAC packet header */
 };
 
 /** @brief the ccf pack class for NS2 */
@@ -62,9 +62,10 @@ protected:
 };
 
 #if TESTCCF
-int test_pktclass (void);
 int test_ccfhdr (void);
+int test_machdr (void);
 int test_pack (void);
+int test_pktclass (void);
 #endif
 
 #endif /* _TESTCCF_H */

@@ -38,9 +38,9 @@ typedef struct _ds3hdr_ccf_t {
     uint16_t r          :  1; /**< Reserved */
     uint16_t offmac     : 14; /**< Pointer to MAC header */
     uint16_t sequence   : 13; /**< Sequence # */
-    uint16_t sc         :  3; /**< SC */
-    uint16_t request; /**< Request */
-    uint16_t hcs; /**< HCS */
+    uint16_t sc         :  3; /**< SID Cluster ID */
+    uint16_t request;         /**< Request */
+    uint16_t hcs;             /**< HCS */
 } ds3hdr_ccf_t;
 
 ssize_t ds3hdr_ccf_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_ccf_t * rethdr);

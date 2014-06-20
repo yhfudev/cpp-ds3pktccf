@@ -155,11 +155,25 @@ ds3packet_ns2_t::operator == (const ds3packet_ns2_t & rhs)
     return true;
 }
 
+static const char *
+ds3_event2desc (ds3event_t e)
+{
+#define MYCASE(v) case v: return #v
+    switch (e) {
+        MYCASE(DS3EVT_MAP);
+        MYCASE(DS3EVT_PKT);
+        MYCASE(DS3EVT_TMRPKT);
+        MYCASE(DS3EVT_TMRREQ);
+    }
+    return "UNKNOWN";
+#undef MYCASE
+}
+
 int
 ds3ns2_ccf_pack_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id)
 {
     std::cout << "Got a packed CCF segment: " << std::endl;
-    std::cout << "  -- start timer: tm=" << abs_time << ", event=" << evt << ", pkt.size=" << p->get_size() << ", channelId=" << channel_id << std::endl;
+    std::cout << "  -- start timer: tm=" << abs_time << ", event=" << ds3_event2desc(evt) << ", pkt.size=" << p->get_size() << ", channelId=" << channel_id << std::endl;
     add_channel_packet (p);
     return 0;
 }
@@ -372,7 +386,7 @@ int
 test_ccfhdr (void)
 {
     ds3hdr_ccf_t ccfhdr, ccfhdr2, *ph;
-    uint8_t buffer[16];
+    uint8_t buffer[sizeof (ccfhdr) * 2];
 
     ph = &ccfhdr;
     memset (ph, 0, sizeof(*ph));
@@ -403,6 +417,36 @@ test_ccfhdr (void)
     }
     printf ("[%s()] Passed !\n", __func__);
     return 0;
+#undef  MYCHK1
+}
+
+int
+test_machdr (void)
+{
+    ds3hdr_mac_t machdr, machdr2, *ph;
+    uint8_t buffer[sizeof (machdr) * 2];
+
+    ph = &machdr;
+    memset (ph, 0, sizeof(*ph));
+    ph->length = 530;
+    ph->sequence = 17;
+
+    ph = &machdr2;
+    memset (ph, 0, sizeof(*ph));
+
+    ds3hdr_mac_to_nbs (buffer, sizeof (buffer), &machdr);
+    ds3hdr_mac_from_nbs (buffer, sizeof (buffer), &machdr2);
+#define MYCHK1(name1) REQUIRE (machdr.name1 == machdr2.name1)
+    MYCHK1(length);
+    MYCHK1(sequence);
+
+    if (0 != memcmp (&machdr, &machdr2, sizeof(machdr))) {
+        printf ("[%s()] Error in machdr2!\n", __func__);
+        return -1;
+    }
+    printf ("[%s()] Passed !\n", __func__);
+    return 0;
+#undef  MYCHK1
 }
 
 /* test sort vector */
