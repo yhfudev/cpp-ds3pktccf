@@ -324,7 +324,8 @@ test_pack (void)
             pkt->dump();
         }
     }
-    REQUIRE ( 3 == get_channel_packet_length() );
+    //REQUIRE ( 3 == get_channel_packet_length() );
+    size_t nlast = get_channel_packet_length();
 
     next_gt_time = 1.0;
     my_set_time (next_gt_time);
@@ -339,14 +340,14 @@ test_pack (void)
         set_channel_packet (j, NULL); // because the CCF packet were deleted by the process_packet()
     }
     std::cout << "channel packet # = " << get_channel_packet_length() << std::endl;
-    REQUIRE ( 3 + NUM_PKT == get_channel_packet_length() );
+    REQUIRE ( nlast + NUM_PKT == (size_t)get_channel_packet_length() );
     assert (g_pkt_in_recycle.size() == NUM_PKT);
     ds3packet_ns2_t * pktns1 = NULL;
     for (i = 0; i < NUM_PKT; i ++) {
         // compare the packet
         pktns2 = dynamic_cast<ds3packet_ns2_t *>(g_pkt_in_recycle[i]);
         REQUIRE (NULL != pktns2);
-        pktns1 = dynamic_cast<ds3packet_ns2_t *>(get_channel_packet(3 + i));
+        pktns1 = dynamic_cast<ds3packet_ns2_t *>(get_channel_packet(nlast + i));
         REQUIRE (NULL != pktns1);
         if (*pktns1 != *pktns2) {
             std::cout << "packet(" << i << ") not equal!" << std::endl;
