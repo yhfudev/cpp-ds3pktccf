@@ -5,7 +5,6 @@
  * @version 1.0
  * @date    2014-06-12
  * @copyright Yunhui Fu (2014)
- * @bug No known bugs.
  */
 
 #include "testccf.h"
@@ -20,6 +19,7 @@ TEST_CASE( "Test ccfpack the DOCSIS CCF module", "[ccfpack]" ) {
     REQUIRE (0 == test_pktclass()); //exit(0);
     REQUIRE (0 == test_machdr());
     REQUIRE (0 == test_ccfhdr());
+    REQUIRE (0 == test_pktcnt());
     REQUIRE (0 == test_pack());
 #else
     ds3hdr_ccf_t ccfhdr, ccfhdr2, *ph;

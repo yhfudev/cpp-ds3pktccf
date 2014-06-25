@@ -5,6 +5,7 @@
  * @version 1.0
  * @date    2014-06-19
  * @copyright Yunhui Fu (2014)
+ * @bug can't pass test case test_pack_fix1()
  */
 
 #include <stdio.h>
@@ -14,61 +15,9 @@
 
 int add_channel_packet (ds3packet_t * p);
 
-#if 0
+#if CCFDEBUG
 void
-ds3_dump_packet (ds3packet_t *p)
-{
-    bool flg_proc = false;
-    ds3packet_ns2_t *pktns2 = NULL;
-    ds3packet_ccf_t *pktccf = NULL;
-
-    pktns2 = dynamic_cast<ds3packet_ns2_t *>(p);
-    if (pktns2) {
-        ds3hdr_mac_t & machdr = pktns2->get_header();
-        std::cout << "MAC pkt"
-            //<< ", type: " << typeid(p).name()
-            << ", hdr.sequence=" << machdr.sequence
-            << ", cnt.sz="      << p->get_content_ref().size() << "/" << p->get_size()
-            << ", hdr.length="  << machdr.length
-            << std::endl;
-        flg_proc = true;
-    } else {
-        pktccf = dynamic_cast<ds3packet_ccf_t *>(p);
-    }
-
-    if (pktccf) {
-        ds3hdr_ccf_t & ccfhdr = pktccf->get_header();
-        std::cout << "CCF pkt"
-            //<< ", type: "       << typeid(p).name()
-            << ", hdr.sequence=" << ccfhdr.sequence
-            << ", cnt.sz="      << p->get_content_ref().size() << "/" << p->get_size()
-            << ", hdr.pfi="     << ccfhdr.pfi
-            << ", hdr.offmac="  << ccfhdr.offmac
-            << ", hdr.sc="      << ccfhdr.sc
-            << ", hdr.request=" << ccfhdr.request
-            << ", hdr.hcs="     << ccfhdr.hcs
-            << std::endl;
-        flg_proc = true;
-    }
-
-    if (! flg_proc) {
-        // it's a generic ds3packet_t ?
-        std::cout << "Fatal: unknown packet"
-            //<< ", type: " << typeid(p).name()
-            << ", cnt.sz=" << p->get_content_ref().size() << "/" << p->get_size() << std::endl;
-    }
-    std::cout << "   content: " ;// << std::endl;
-    std::vector<uint8_t>::iterator itb = p->get_content_ref().begin();
-    std::vector<uint8_t>::iterator ite = p->get_content_ref().end();
-    for (; itb != ite; itb ++ ) {
-        printf (" %02X", *itb);
-    }
-    std::cout << std::endl;
-}
-#endif
-
-void
-ds3packet_ns2_t::dump (void)
+ds3packet_nbsmac_t::dump (void)
 {
     ds3hdr_mac_t & machdr = this->get_header();
     std::cout << "MAC pkt"
@@ -80,34 +29,53 @@ ds3packet_ns2_t::dump (void)
     this->dump_content ();
 }
 
+/*char *
+ds3_packet_buffer_t::type2desc (ds3_packet_buffer_t * p)
+{
+    ds3_packet_buffer_nbsmac_t p1;
+    p1 = dynamic_cast<ds3_packet_buffer_nbsmac_t *>(p);
+    if (NULL != p1) {
+        return "ds3_packet_buffer_nbsmac_t";
+    }
+    ds3_packet_buffer_ns2_t * p2;
+    ds3_packet_buffer_nbs_t * p3;
+
+}*/
+#endif
+
 ssize_t
-ds3packet_ns2_t::to_nbs (uint8_t *nbsbuf, size_t szbuf)
+ds3packet_nbsmac_t::to_nbs (uint8_t *nbsbuf, size_t szbuf)
 {
     ssize_t szret = 0;
     size_t szcur = 0;
+    this->get_header();
 
     if (0 == szbuf) {
-        return ds3hdr_mac_to_nbs (NULL, 0, &(this->machdr)) + this->buffer.size();
+        return ds3hdr_mac_to_nbs (NULL, 0, &(this->machdr)) + this->get_content_ref().size();
     }
     szret = ds3hdr_mac_to_nbs (nbsbuf, szbuf, &(this->machdr));
     if (szret < 0) {
         return -1;
     }
-    if (szret + this->buffer.size() > szbuf) {
+    if (szret + this->get_content_ref().size() > (ssize_t)szbuf) {
         return -1;
     }
     szcur += szret;
 
-    std::copy (this->buffer.begin(), this->buffer.end(), nbsbuf + szcur);
+    //std::copy (this->buffer.begin(), this->buffer.end(), nbsbuf + szcur);
+    //memmove (nbsbuf + szcur, &(this->buffer[0]), this->buffer.end() - this->buffer.begin());
+    this->get_content_ref().to_nbs (nbsbuf + szcur, this->get_content_ref().size());
+    szcur += (this->get_content_ref().size());
 
     return szcur;
 }
 
 ssize_t
-ds3packet_ns2_t::from_nbs (uint8_t *nbsbuf, size_t szbuf)
+ds3packet_nbsmac_t::from_nbs (uint8_t *nbsbuf, size_t szbuf)
 {
     ssize_t szret = 0;
     size_t szcur = 0;
+
     if (0 == szbuf) {
         return ds3hdr_mac_from_nbs (NULL, 0, &(this->machdr));
     }
@@ -121,22 +89,61 @@ ds3packet_ns2_t::from_nbs (uint8_t *nbsbuf, size_t szbuf)
     if (szcur + tmphdr.length > szbuf) {
         return -1;
     }
-    memmove (&(this->machdr), &tmphdr, sizeof (tmphdr));
+    //memmove (&(this->machdr), &tmphdr, sizeof (tmphdr));
+    this->set_header (&tmphdr);
     // the content
-#if 1
-    buffer.resize(tmphdr.length);
-    std::copy (nbsbuf + szcur, nbsbuf + szcur + tmphdr.length, this->buffer.begin());
-#else
-    this->buffer.resize(0);
-    this->buffer.insert (this->buffer.begin(), nbsbuf + szcur, nbsbuf + szcur + tmphdr.length);
-#endif
+    this->get_content_ref().from_nbs (nbsbuf + szcur, tmphdr.length);
+
     szcur += tmphdr.length;
     return szcur;
 }
 
-//bool operator < (const ds3packet_ns2_t & lhs, const ds3packet_ns2_t & rhs);
+ssize_t
+ds3packet_nbsmac_t::from_nbs (ds3_packet_buffer_t *peer, size_t pos_peer)
+{
+    ssize_t szret = 0;
+    size_t szcur = 0;
+
+    szret = ds3hdr_mac_from_nbs (NULL, 0, &(this->machdr));
+    assert (szret > 0);
+    if ((ssize_t)(pos_peer + szret) > peer->size()) {
+        return -1;
+    }
+    // the ``MAC header''
+    ds3hdr_mac_t tmphdr;
+    std::vector<uint8_t> buffer1;
+#if 0
+    peer->append_to (buffer1);
+#else
+    buffer1.resize(szret);
+    for (int i; i < szret; i ++) {
+        buffer1[i] = peer->at(pos_peer + i);
+    }
+#endif // 1
+    size_t szbuf = buffer1.size();
+    szret = ds3hdr_mac_from_nbs (&(buffer1[0]), szbuf, &tmphdr);
+    if (szret < 0) {
+        return -1;
+    }
+    szcur += szret;
+    if ((ssize_t)(szcur + tmphdr.length + pos_peer) > peer->size()) {
+        // no enough data
+        return -1;
+    }
+    memmove (&(this->machdr), &tmphdr, sizeof (tmphdr));
+    // the content
+    //buffer.resize(tmphdr.length);
+    //std::copy (nbsbuf + szcur, nbsbuf + szcur + tmphdr.length, this->buffer.begin());
+    this->get_content_ref().resize(0);
+    this->get_content_ref().insert (this->get_content_ref().end(), peer, peer->begin() + pos_peer + szcur, peer->begin() + (pos_peer + szcur + tmphdr.length));
+
+    szcur += tmphdr.length;
+    return szcur;
+}
+
+//bool operator < (const ds3packet_nbsmac_t & lhs, const ds3packet_nbsmac_t & rhs);
 bool
-ds3packet_ns2_t::operator == (const ds3packet_ns2_t & rhs)
+ds3packet_nbsmac_t::operator == (const ds3packet_nbsmac_t & rhs)
 {
     if (this->machdr.length != rhs.machdr.length) {
         return false;
@@ -147,12 +154,246 @@ ds3packet_ns2_t::operator == (const ds3packet_ns2_t & rhs)
     if (this->buffer.size() != rhs.buffer.size()) {
         return false;
     }
-    for (size_t i = 0; i < this->buffer.size(); i ++) {
+    for (ssize_t i = 0; i < this->buffer.size(); i ++) {
         if (this->buffer[i] != rhs.buffer[i]) {
             return false;
         }
     }
     return true;
+}
+
+#if 0
+/**
+ * @brief get the raw data bytes(network byte sequence) of the packet
+ *
+ * @param pos : [in] the start position of the byte sequence
+ * @param nbsbuf : [in,out] the buffer to be filled
+ * @param szbuf : [in] the size requested to be filled
+ *
+ * @return the size of data copied to buffer, >0 on success, < 0 on error
+ *
+ * get the raw data bytes(network byte sequence) of the packet
+ */
+ssize_t
+ds3packet_nbsmac_t::copy_to (size_t pos, std::vector<uint8_t> & nbsbuf, size_t szbuf)
+{
+    ssize_t ret;
+    size_t szorig;
+    szorig = nbsbuf.size();
+    nbsbuf.resize (nbsbuf.size() + szbuf);
+    ret = get_pkt_bytes (pos, &nbsbuf[szorig], szbuf);
+    if (ret > 0) {
+        nbsbuf.resize(szorig + ret);
+    } else {
+        nbsbuf.resize(szorig);
+    }
+    return ret;
+}
+
+/**
+ * @brief get the raw data bytes(network byte sequence) of the packet
+ *
+ * @param pos : [in] the start position of the byte sequence
+ * @param nbsbuf : [in,out] the buffer to be filled
+ * @param szbuf : [in] the size requested to be filled
+ *
+ * @return the size of data copied to buffer, >0 on success, < 0 on error
+ *
+ * get the raw data bytes(network byte sequence) of the packet
+ */
+ssize_t
+ds3packet_nbsmac_t::copy_to (size_t pos, uint8_t *nbsbuf, size_t szbuf)
+{
+    size_t szcpy = 0;
+    size_t szcur = 0; /* the buffer used */
+    size_t szhdr = this->hdr_to_nbs (NULL, 0);
+
+    if (pos < szhdr) {
+        /* part of content is the header */
+        if (szhdr + szcur <= szbuf) {
+            /* there's enough buffer from the user */
+            hdr_to_nbs (nbsbuf + szcur, szbuf - szcur);
+            if (pos > 0) {
+                assert (szhdr > pos);
+                memmove (nbsbuf + szcur, nbsbuf + szcur + pos, szhdr - pos);
+            }
+            szcur += (szhdr - pos);
+        } else {
+            // create a new buffer
+            std::vector<uint8_t> buffer1;
+            buffer1.resize(szhdr * 2);
+            hdr_to_nbs (&buffer1[0], buffer1.size());
+            buffer1.resize(szhdr);
+            assert (szhdr >= pos);
+            assert (szhdr > szbuf);
+            szcpy = szhdr - pos;
+            if (szcpy + szcur > szbuf) {
+                szcpy = szbuf - szcur;
+            }
+            assert (szcpy + pos < buffer1.size());
+            std::copy (buffer1.begin() + pos, buffer1.begin() + pos + szcpy, nbsbuf + szcur);
+            szcur += szcpy;
+        }
+    }
+    if (szcur < szbuf) {
+        size_t newoff = 0;
+        if (pos > szhdr) {
+            newoff = pos - szhdr;
+        }
+        if ((ssize_t)newoff >= this->buffer.size()) {
+            return szcur;
+        }
+        szcpy = szbuf - szcur;
+        if ((ssize_t)(szcpy + newoff) > this->buffer.size()) {
+            szcpy = this->buffer.size() - newoff;
+        }
+        std::copy (this->buffer.begin() + newoff, this->buffer.begin() + newoff + szcpy, nbsbuf + szcur);
+        szcur = szbuf;
+    }
+    return szcur;
+}
+#endif
+
+/* the real packet is stored in peer which is created by this micro */
+#define DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_real_type, arg_peer) \
+    ds3_real_type *peer = NULL; \
+    if (NULL == arg_peer) { \
+        /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */ \
+        arg_peer = peer = new ds3_real_type (); \
+    } else { \
+        peer = dynamic_cast<ds3_real_type *>(arg_peer); \
+    } \
+    if (NULL == peer) { \
+        assert (0); \
+        return NULL; \
+    } \
+    if ((ssize_t)pos_peer > peer->size()) { \
+        return NULL; \
+    } \
+    if (begin_self >= this->size()) { \
+        /* do nothing */ \
+        return arg_peer; \
+    } \
+    if (end_self > this->size()) { \
+        end_self = this->size(); \
+    }
+
+/**
+ * @brief get the raw data bytes(network byte sequence) of the packet
+ *
+ * @param pos_peer : [in] the insert position of buffer
+ * @param peer : [out] the buffer to be filled
+ * @param begin_self : [in] the start position of the byte sequence
+ * @param end_self : [in] the end position
+ *
+ * @return a new buffer(if peer==NULL) or peer on success, NULL on error
+ *
+ * get the raw data bytes(network byte sequence) of the packet
+ *
+ * This function only support std::vector<uint8_t> buffer!
+ */
+ds3_packet_buffer_t *
+ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, size_t begin_self, size_t end_self)
+{
+#if 0
+    DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_packet_buffer_nbs_t, arg_peer);
+#else
+#ifdef ds3_real_type
+#undef ds3_real_type
+#endif
+#define ds3_real_type ds3_packet_buffer_nbsmac_t
+    ds3_real_type *peer = NULL;
+    if (NULL == arg_peer) {
+        /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */
+        arg_peer = peer = new ds3_real_type ();
+    } else {
+        peer = dynamic_cast<ds3_real_type *>(arg_peer);
+        if (NULL == peer) {
+            if (NULL != (arg_peer)->get_buffer()) {
+                /* it's a base class, and it stored the content from other ns2 content */
+                peer = dynamic_cast<ds3_real_type *>((arg_peer)->get_buffer());
+            }
+        }
+        if (NULL == peer) {
+            // create a new one, and try to append to the current arg_peer
+            // we only support ds3_packet_buffer_nbsmac_t
+            ds3_packet_buffer_nbsmac_t *p = new ds3_packet_buffer_nbsmac_t ();
+            assert (NULL != arg_peer);
+            arg_peer->insert(0, p, 0, 0);
+            if (NULL != (arg_peer)->get_buffer()) {
+                /* it's a base class, and it stored the content from other ns2 content */
+                peer = dynamic_cast<ds3_real_type *>((arg_peer)->get_buffer());
+            }
+        }
+    }
+    if (NULL == peer) {
+        assert (0);
+        return NULL;
+    }
+    if ((ssize_t)pos_peer > peer->size()) {
+        return NULL;
+    }
+    if (begin_self >= this->size()) {
+        /* do nothing */
+        return arg_peer;
+    }
+    if (end_self > this->size()) {
+        end_self = this->size();
+    }
+#endif
+    assert (NULL != peer);
+    if (begin_self >= end_self) {
+        return arg_peer;
+    }
+    size_t szcpy = 0;
+    size_t szcur = 0; /* the buffer used */
+    size_t szhdr = this->hdr_to_nbs (NULL, 0);
+
+    size_t pos = begin_self;
+    size_t szbuf = end_self - begin_self;
+
+    if (pos < szhdr) {
+        /* part of content is the header */
+        // create a new buffer
+        std::vector<uint8_t> buffer1;
+        buffer1.resize(szhdr * 2);
+        hdr_to_nbs (&buffer1[0], buffer1.size());
+        buffer1.resize(szhdr);
+        assert (szhdr >= pos);
+        szcpy = szhdr - pos;
+        if (szcpy + szcur > szbuf) {
+            szcpy = szbuf - szcur;
+        }
+        if (szcpy + pos > buffer1.size()) {
+            szcpy = buffer1.size() - pos;
+        }
+        assert (szcpy + szcur <= szbuf);
+        //std::copy (buffer1.begin() + pos, buffer1.begin() + pos + szcpy, nbsbuf + szcur);
+        assert (pos < buffer1.size());
+        assert (pos + szcpy <= buffer1.size());
+        std::vector<uint8_t>::iterator it1b = buffer1.begin() + pos;
+        std::vector<uint8_t>::iterator it1e = buffer1.begin() + pos + szcpy;
+        peer->append (it1b, it1e);
+        szcur += szcpy;
+    }
+    if (szcur < szbuf) {
+        size_t newoff = 0;
+        if (pos > szhdr) {
+            newoff = pos - szhdr;
+        }
+        ds3_packet_buffer_t & cntbufref = this->get_content_ref();
+        if ((ssize_t)newoff >= cntbufref.size()) {
+            return arg_peer;
+        }
+        szcpy = szbuf - szcur;
+        if ((ssize_t)(szcpy + newoff) > cntbufref.size()) {
+            szcpy = cntbufref.size() - newoff;
+        }
+        //std::copy (cntbufref.begin() + newoff, cntbufref.begin() + newoff + szcpy, nbsbuf + szcur);
+        peer->insert (peer->end(), &cntbufref, cntbufref.begin() + newoff, cntbufref.begin() + (newoff + szcpy));
+        szcur = szbuf;
+    }
+    return arg_peer;
 }
 
 static const char *
@@ -170,7 +411,7 @@ ds3_event2desc (ds3event_t e)
 }
 
 int
-ds3ns2_ccf_pack_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id)
+ds3_ccf_pack_nbs_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id)
 {
     std::cout << "Got a packed CCF segment: " << std::endl;
     std::cout << "  -- start timer: tm=" << abs_time << ", event=" << ds3_event2desc(evt) << ", pkt.size=" << p->get_size() << ", channelId=" << channel_id << std::endl;
@@ -179,7 +420,7 @@ ds3ns2_ccf_pack_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packe
 }
 
 int
-ds3ns2_ccf_unpack_t::signify_piggyback (int sc, size_t request)
+ds3_ccf_unpack_nbs_t::signify_piggyback (int sc, size_t request)
 {
     std::cout << "Got a unpacked piggyback request: sc=" << sc << ", request=" << request << std::endl;
     // append the assemblied packet, we'll delete tht packet later
@@ -187,20 +428,20 @@ ds3ns2_ccf_unpack_t::signify_piggyback (int sc, size_t request)
 }
 
 int
-ds3ns2_ccf_unpack_t::signify_packet (std::vector<uint8_t> & macbuffer)
+ds3_ccf_unpack_nbs_t::signify_packet (ds3_packet_buffer_t & macbuffer)
 {
     assert (macbuffer.size() > 0);
     // append the assemblied packet, we'll delete tht packet later
-    ds3packet_ns2_t *p = new ds3packet_ns2_t();
+    ds3packet_nbsmac_t *p = new ds3packet_nbsmac_t();
     assert (NULL != p);
-    p->from_nbs (&macbuffer[0], macbuffer.size());
+    p->from_nbs (&macbuffer, 0);
     std::cout << "Got a unpacked MAC packet:" << std::endl;
     add_channel_packet (p);
     return 0;
 }
 
 /*****************************************************************************/
-#if 1 //TESTCCF
+#if 1 // CCFDEBUG
 /* stub functions */
 
 double g_my_time = 0.0;
@@ -275,35 +516,119 @@ my_drop_packet (ds3packet_t *p)
     delete p;
 }
 
+void
+clean_all_packets (void)
+{
+    ds3packet_t *pkt = NULL;
+    size_t i, j;
+    j = 0;
+    for (i = get_channel_packet_length(); i > 0; i --, j ++) {
+        pkt = get_channel_packet(j);
+        set_channel_packet (j, NULL);
+        if (NULL != pkt) {
+            delete pkt;
+        }
+    }
+    j = 0;
+    for (i = g_pkt_in_recycle.size(); i > 0; i --, j ++) {
+        pkt = g_pkt_in_recycle.at(j);
+        //g_pkt_in_recycle.at(j) = NULL;
+        if (NULL != pkt) {
+            delete pkt;
+        }
+    }
+    g_pkt_in_recycle.erase(g_pkt_in_recycle.begin(), g_pkt_in_recycle.end());
+    g_pkt_in_channel.erase(g_pkt_in_channel.begin(), g_pkt_in_channel.end());
+}
+
 #ifndef REQUIRE
 #define REQUIRE assert
 #endif
 
-#define NUM_PKT 5
+//#define NUM_PKT 5
 
 /**
  * @brief test pack/unpack
  */
 int
-test_pack (void)
+test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
 {
     int ret = 0;
     size_t i = 0;
     int j = 0;
     double next_gt_time = 0.0;
-    ds3ns2_ccf_pack_t pak;
-    ds3ns2_ccf_unpack_t unpak;
+    ds3_ccf_pack_nbs_t pak;
+    ds3_ccf_unpack_nbs_t unpak;
     std::vector<ds3_grant_t> mygrants;
     ds3_grant_t gt;
-    ds3packet_ns2_t * pktns2 = NULL;
+    ds3packet_nbsmac_t * pktns2 = NULL;
     ds3packet_t *pkt = NULL;
 
-    uint8_t pktcontent[5 + NUM_PKT + 1];
-    //memset (pktcontent, 0xC0, sizeof(pktcontent) - 1);
-    for (i = 0; i < sizeof(pktcontent) - 1; i ++) {
-        pktcontent[i] = 0xC1 + i;
+    std::vector<size_t> size_pkt; // the size of each packet
+    std::vector<size_t> size_grant; // the granted size
+    size_t szpkt;
+    size_t sztotal = 0; // the total size of packets
+    size_t szcur = 0;
+
+    if (NULL == packetsize) {
+        for (i = 0; i < nump; i ++) {
+            szpkt = rand() % (nump * 2) + 1;
+            size_pkt.push_back (szpkt);
+            sztotal += szpkt + ds3hdr_mac_to_nbs (NULL, 0, NULL);
+        }
+    } else {
+        for (i = 0; i < nump; i ++) {
+            szpkt = packetsize[i];
+            size_pkt.push_back (szpkt);
+            sztotal += szpkt + ds3hdr_mac_to_nbs (NULL, 0, NULL);
+        }
     }
-    pktcontent[sizeof(pktcontent) - 1] = 0;
+    if (NULL == grantsize) {
+        for (i = 0; sztotal > szcur; i ++) {
+            szpkt = rand() % (nump * 5);
+            assert (szpkt >= 0);
+            size_grant.push_back (szpkt + ds3hdr_ccf_to_nbs (NULL, 0, NULL)); // the ccf header size
+            szcur += szpkt;
+        }
+    } else {
+        for (i = 0; sztotal > szcur; i ++) {
+            if (i < numg) {
+                szpkt = grantsize[i];
+            } else {
+                szpkt = rand() % (nump * 5);
+            }
+            assert (szpkt >= 0);
+            size_grant.push_back (szpkt + ds3hdr_ccf_to_nbs (NULL, 0, NULL)); // the ccf header size
+            szcur += szpkt;
+        }
+    }
+
+    size_t max_pkt = 0;
+    std::cout << "The configured size:" << std::endl;
+    std::cout << "size_t size_pkt[] = {" << std::endl << "  ";
+    for (i = 0; i < size_pkt.size(); i ++) {
+        if (max_pkt < size_pkt[i]) { max_pkt = size_pkt[i]; }
+        std::cout << size_pkt[i] << ", ";
+        if ((i + 1) % 16 == 0) {
+            std::cout << std::endl << "  ";
+        }
+    }
+    std::cout << std::endl << "};" << std::endl;
+
+    std::cout << "size_t grantsize[] = {" << std::endl << "  ";
+    for (i = 0; i < size_grant.size(); i ++) {
+        std::cout << size_grant[i] << ", ";
+        if ((i + 1) % 16 == 0) {
+            std::cout << std::endl << "  ";
+        }
+    }
+    std::cout << std::endl << "};" << std::endl;
+
+    std::vector<uint8_t> pktcontent;
+    //memset (pktcontent, 0xC0, sizeof(pktcontent) - 1);
+    for (i = 0; i < max_pkt + 1; i ++) {
+        pktcontent.push_back( 0x11 + i);
+    }
 
     next_gt_time = 0.0;
     my_set_time (next_gt_time);
@@ -314,40 +639,34 @@ test_pack (void)
     REQUIRE (5 == unpak.get_pbmultiplier());
 
     next_gt_time = 1.0;
-    gt.set_size(8+7+2*4); // CCF header(8) + data(7) + NUM_PKT*sizeof(machdr)
-    gt.set_channel_id(1);
-    gt.set_time(next_gt_time);
-    mygrants.push_back (gt);
+    for (i = 0; i < size_grant.size(); i ++) {
+        assert (size_grant.at(i) >= (size_t)    ds3hdr_ccf_to_nbs (NULL, 0, NULL));
+        gt.set_size(size_grant.at(i)); // CCF header(8) + data(7)
+        gt.set_channel_id(1);
+        gt.set_time(next_gt_time);
+        mygrants.push_back (gt);
+    }
 
-    next_gt_time = 2.0;
-    gt.set_size(8+11+2*4);
-    gt.set_channel_id(1);
-    gt.set_time(next_gt_time);
-    mygrants.push_back (gt);
-
-    next_gt_time = 3.0;
-    gt.set_size(8+7+1*4);
-    gt.set_channel_id(1);
-    gt.set_time(next_gt_time);
-    mygrants.push_back (gt);
-
-    next_gt_time = 4.0;
-    gt.set_size(8+7+1*4);
-    gt.set_channel_id(1);
-    gt.set_time(next_gt_time);
-    mygrants.push_back (gt);
     for (i = 0; i < mygrants.size(); i ++) {
         std::cout << "grant[" << i << "]: g.size=" << mygrants[i].get_size() << ", g.cid=" << mygrants[i].get_channel_id() << ", g.time=" << mygrants[i].get_time() << std::endl;
     }
 
     // we add 5 packet (size=5)
-    for (i = 0; i < NUM_PKT; i ++) {
-        pktns2 = new ds3packet_ns2_t ();
-        pktns2->get_header().sequence = i;
+    ds3_packet_buffer_nbs_t nbscnt;
+    for (i = 0; i < nump; i ++) {
+        pktns2 = new ds3packet_nbsmac_t ();
         assert (NULL != pktns2);
-        pktns2->set_content (pktcontent, (NUM_PKT/2) + i);
+
+        // set the content first
+        std::vector<uint8_t>::iterator itb = pktcontent.begin();
+        std::vector<uint8_t>::iterator ite = pktcontent.begin() + size_pkt.at(i);
+        nbscnt.append(itb, ite);
+        pktns2->set_content (&nbscnt);
+
+        pktns2->get_header().sequence = i;
         pak.process_packet(pktns2);
         //std::cout << "channel packet # = " << get_channel_packet_length() << std::endl;
+        nbscnt.resize(0);
     }
 
     pak.add_grants (mygrants, 355);
@@ -386,18 +705,17 @@ test_pack (void)
     for (i = get_channel_packet_length(); i > 0; i --, j ++) {
         pkt = get_channel_packet(j);
         unpak.process_packet (pkt);
-        set_channel_packet (j, NULL); // because the CCF packet were deleted by the process_packet()
+        //set_channel_packet (j, NULL); // because the CCF packet were deleted by the process_packet()
     }
     std::cout << "channel packet # = " << get_channel_packet_length() << std::endl;
-    REQUIRE ( nlast + NUM_PKT == (size_t)get_channel_packet_length() );
-    assert (g_pkt_in_recycle.size() == NUM_PKT);
-    ds3packet_ns2_t * pktns1 = NULL;
-    for (i = 0; i < NUM_PKT; i ++) {
+
+    ds3packet_nbsmac_t * pktns1 = NULL;
+    for (i = 0; i < nump; i ++) {
         // compare the packet
-        pktns1 = dynamic_cast<ds3packet_ns2_t *>(get_channel_packet(nlast + i));
+        pktns1 = dynamic_cast<ds3packet_nbsmac_t *>(get_channel_packet(nlast + i));
         REQUIRE (NULL != pktns1);
-        assert (pktns1->get_header().sequence < NUM_PKT);
-        pktns2 = dynamic_cast<ds3packet_ns2_t *>(g_pkt_in_recycle[pktns1->get_header().sequence]);
+        assert (pktns1->get_header().sequence < nump);
+        pktns2 = dynamic_cast<ds3packet_nbsmac_t *>(g_pkt_in_recycle[pktns1->get_header().sequence]);
         REQUIRE (NULL != pktns2);
         if (*pktns1 != *pktns2) {
             std::cout << "packet(" << i << ") not equal!" << std::endl;
@@ -405,85 +723,70 @@ test_pack (void)
         }
     }
 
-    j = 0;
-    for (i = get_channel_packet_length(); i > 0; i --, j ++) {
-        pkt = get_channel_packet(j);
-        set_channel_packet (j, NULL);
-        if (NULL != pkt) {
-            delete pkt;
-        }
-    }
+    REQUIRE ( nlast + nump == (size_t)get_channel_packet_length() );
+    assert (g_pkt_in_recycle.size() == nump);
+
+    clean_all_packets ();
     return ret;
 }
 
+#define NUMARRAY(v) (sizeof(v)/sizeof(v[0]))
+
+
+int
+test_pack_fix1 (void)
+{
+
+    size_t size_pkt[] = {
+        44, 47, 58, 56, 54, 56, 47, 13, 10, 2, 3, 8, 51, 20, 24, 47,
+        1, 7, 53, 17, 12, 9, 28, 10, 3, 51, 3, 44, 8, 56
+    };
+
+    size_t grantsize[] = {
+        37, 110, 230, 266, 277, 275
+    };
+
+    return test_pack_gp(grantsize, NUMARRAY(grantsize), NULL, NUMARRAY(size_pkt));
+}
+
+int
+test_pack_fix2 (void)
+{
+    size_t size_pkt[] = {
+        63, 100, 92, 67, 95, 5, 37, 43, 52, 145, 70, 117, 4, 6, 5, 24,
+        120, 25, 17, 1, 37, 142, 122, 37, 108, 35, 69, 99, 115, 125, 27, 42,
+        73, 134, 108, 31, 3, 144, 73, 54, 1, 6, 18, 4, 12, 38, 28, 147,
+        62, 44, 147, 99, 49, 117, 151, 21, 15, 83, 119, 129, 72, 9, 18, 144,
+        143, 142, 38, 145, 133, 110, 62, 133, 132, 79, 1, 143,
+    };
+    size_t grantsize[] = {
+        47, 111, 8, 353, 322, 247, 11, 67, 151, 253, 179, 165, 108, 237, 141, 255,
+        322, 251, 110, 252, 332, 147, 108, 236, 348, 245, 233, 99, 111, 309, 181, 242,
+    };
+
+    return test_pack_gp(grantsize, NUMARRAY(grantsize), NULL, NUMARRAY(size_pkt));
+}
+
+int
+test_pack_random (void)
+{
+    srand(time(NULL));
+    size_t nump = rand () % 100;
+    if (nump < 2) {nump = 2;}
+    size_t numg = rand () % (nump / 2);
+    return test_pack_gp(0, numg, NULL, nump);
+}
+
+int
+test_pack (void)
+{
+    REQUIRE (0 == test_pack_fix1());
+    REQUIRE (0 == test_pack_fix2());
+    REQUIRE (0 == test_pack_random());
+    return test_pack_random();
+}
+
 /*****************************************************************************/
-int
-test_ccfhdr (void)
-{
-    ds3hdr_ccf_t ccfhdr, ccfhdr2, *ph;
-    uint8_t buffer[sizeof (ccfhdr) * 2];
-
-    ph = &ccfhdr;
-    memset (ph, 0, sizeof(*ph));
-    ph->pfi = 1;
-    ph->offmac = 50;
-    ph->sequence = 10;
-    ph->sc = 2;
-    ph->request = 3922;
-    ph->hcs = 39283;
-
-    ph = &ccfhdr2;
-    memset (ph, 0, sizeof(*ph));
-
-    ds3hdr_ccf_to_nbs (buffer, sizeof (buffer), &ccfhdr);
-    ds3hdr_ccf_from_nbs (buffer, sizeof (buffer), &ccfhdr2);
-#define MYCHK1(name1) REQUIRE (ccfhdr.name1 == ccfhdr2.name1)
-    MYCHK1(pfi);
-    MYCHK1(r);
-    MYCHK1(offmac);
-    MYCHK1(sequence);
-    MYCHK1(sc);
-    MYCHK1(request);
-    MYCHK1(hcs);
-
-    if (0 != memcmp (&ccfhdr, &ccfhdr2, sizeof(ccfhdr))) {
-        printf ("[%s()] Error in ccfhdr2!\n", __func__);
-        return -1;
-    }
-    printf ("[%s()] Passed !\n", __func__);
-    return 0;
-#undef  MYCHK1
-}
-
-int
-test_machdr (void)
-{
-    ds3hdr_mac_t machdr, machdr2, *ph;
-    uint8_t buffer[sizeof (machdr) * 2];
-
-    ph = &machdr;
-    memset (ph, 0, sizeof(*ph));
-    ph->length = 530;
-    ph->sequence = 17;
-
-    ph = &machdr2;
-    memset (ph, 0, sizeof(*ph));
-
-    ds3hdr_mac_to_nbs (buffer, sizeof (buffer), &machdr);
-    ds3hdr_mac_from_nbs (buffer, sizeof (buffer), &machdr2);
-#define MYCHK1(name1) REQUIRE (machdr.name1 == machdr2.name1)
-    MYCHK1(length);
-    MYCHK1(sequence);
-
-    if (0 != memcmp (&machdr, &machdr2, sizeof(machdr))) {
-        printf ("[%s()] Error in machdr2!\n", __func__);
-        return -1;
-    }
-    printf ("[%s()] Passed !\n", __func__);
-    return 0;
-#undef  MYCHK1
-}
-
 /* test sort vector */
 bool myfunction (int i,int j) { return (i<j); }
 int
@@ -537,12 +840,17 @@ test_pktclass (void)
     return 0;
 }
 
+#if TESTCCF
 int
 main1(void)
 {
     test_pktclass ();
     test_ccfhdr();
+    test_machdr();
     test_pack();
+    test_pktcnt ();
     return 0;
 }
+#endif
+
 #endif

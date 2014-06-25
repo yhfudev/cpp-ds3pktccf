@@ -3,6 +3,7 @@ CC=g++
 bin_PROGRAMS=unittest
 
 unittest_SOURCES= \
+    ds3pktcnt.cc \
     ds3pktccf.cc \
     testccf.cc \
     unittest.cc \
@@ -20,7 +21,7 @@ unittest_CPPFLAGS= \
     $(NULL)
 
 DEFS+= \
-    -DTESTCCF=1 \
+    -DTESTCCF=1 -DCCFDEBUG=1\
     `getconf LFS_CFLAGS` \
     `getconf LFS64_CFLAGS` \
     -D_GNU_SOURCE \

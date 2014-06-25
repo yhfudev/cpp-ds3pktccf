@@ -32,10 +32,13 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 			<Add option="-DTESTCCF=1" />
+			<Add option="-DCCFDEBUG=1" />
 			<Add directory="../../cache-git/include" />
 		</Compiler>
 		<Unit filename="../src/ds3pktccf.cc" />
 		<Unit filename="../src/ds3pktccf.h" />
+		<Unit filename="../src/ds3pktcnt.cc" />
+		<Unit filename="../src/ds3pktcnt.h" />
 		<Unit filename="../src/testccf.cc" />
 		<Unit filename="../src/testccf.h" />
 		<Unit filename="../src/unittest.cc" />

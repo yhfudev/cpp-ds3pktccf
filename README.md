@@ -22,21 +22,17 @@ There are a few different ways you can install DS3PKTCCF:
 
 ## Examples
 
-    /* packet for NS2 */
-    class ds3packet_ns2_t : public ds3packet_t {
+    class ds3packet_nbsmac_t : public ds3packet_t {
     public:
         virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
         virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf);
-        virtual ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf);
-        // ...
-
-    private:
+        virtual ssize_t from_nbs (ds3_packet_buffer_t *peer, size_t pos_peer);
+        virtual int set_content (ds3_packet_buffer_t *peer);
+        virtual ds3_packet_buffer_t * insert_to (size_t pos_peer, ds3_packet_buffer_t *peer, size_t begin_self, size_t end_self);
         // ...
     };
 
-    /* the ccf pack class for NS2 */
-    class ds3ns2_ccf_pack_t : public ds3_ccf_pack_t {
-    public:
+    class ds3_ccf_pack_nbs_t : public ds3_ccf_pack_t {
     protected:
         virtual void recycle_packet (ds3packet_t *p);
         virtual void drop_packet (ds3packet_t *p);
@@ -44,13 +40,11 @@ There are a few different ways you can install DS3PKTCCF:
         virtual double current_time (void);
     };
 
-    /* the ccf unpack class for NS2 */
-    class ds3ns2_ccf_unpack_t : public ds3_ccf_unpack_t {
-    public:
+    class ds3_ccf_unpack_nbs_t : public ds3_ccf_unpack_t {
     protected:
         virtual void recycle_packet (ds3packet_t *p);
         virtual void drop_packet (ds3packet_t *p);
-        virtual int signify_packet (std::vector<uint8_t> & macbuffer);
+        virtual int signify_packet (ds3_packet_buffer_t & macbuffer);
         virtual int signify_piggyback (int sc, size_t request);
     };
 
@@ -89,12 +83,6 @@ There are a few different ways you can install DS3PKTCCF:
         mygrants.push_back (gt);
 
         next_gt_time = 3.0;
-        gt.set_size(8+7+1*2);
-        gt.set_channel_id(1);
-        gt.set_time(next_gt_time);
-        mygrants.push_back (gt);
-
-        next_gt_time = 4.0;
         gt.set_size(8+7+1*2);
         gt.set_channel_id(1);
         gt.set_time(next_gt_time);
@@ -139,4 +127,4 @@ There are a few different ways you can install DS3PKTCCF:
         }
         return 0;
     }
-    
+

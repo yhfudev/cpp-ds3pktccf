@@ -10,12 +10,14 @@
 #define _DS3PKGCCF_H
 
 #include <stdint.h> // uint16_t
-#include <string.h>     // memcmp
+#include <string.h> // memcmp
 #include <assert.h>
 
 #include <iostream>
 #include <vector>
 #include <algorithm>
+
+#include "ds3pktcnt.h"
 
 /**
  * @brief The event type for state machine
@@ -30,46 +32,21 @@
 
 #define DS3_MULTIPLIER_REQUEST 8 /**< the value of the default Multiplier (Number of Bytes Requested in Annex C) */
 
-/**
- * @brief The CCF segment header structure
- */
-typedef struct _ds3hdr_ccf_t {
-    uint16_t pfi        :  1; /**< PFI */
-    uint16_t r          :  1; /**< Reserved */
-    uint16_t offmac     : 14; /**< Pointer to MAC header */
-    uint16_t sequence   : 13; /**< Sequence # */
-    uint16_t sc         :  3; /**< SID Cluster ID */
-    uint16_t request;         /**< Request */
-    uint16_t hcs;             /**< HCS */
-} ds3hdr_ccf_t;
-
-ssize_t ds3hdr_ccf_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_ccf_t * rethdr);
-
-ssize_t ds3hdr_ccf_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_ccf_t * refhdr);
-
-/**
- * @brief The DOCSIS MAC header structure
- */
-typedef struct _ds3hdr_mac_t {
-    uint16_t sequence; /**< The sequence # of the MAC packet */
-    uint16_t length; /**< The length of the data in the MAC packet */
-} ds3hdr_mac_t;
-
-ssize_t ds3hdr_mac_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * refhdr);
-
-ssize_t ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethdr);
 
 /**
  * @brief The base class for all types of the packet
  */
 class ds3packet_t {
 public:
+#if CCFDEBUG
+    virtual void dump (void) { DS3_WRONGFUNC_RET(); } /**< dump the content of packet */
+#endif
+
     ds3packet_t() : pos_next(0) {}
     virtual ~ds3packet_t() { std::cout << "Destroy " << __func__ << std::endl; } /**< the children class should re-implement this destructor to release resource correctly */
 
-    virtual ssize_t get_pkt_bytes (size_t pos, uint8_t *nbsbuf, size_t szbuf);
-    ssize_t get_pkt_bytes (size_t pos, std::vector<uint8_t> & nbsbuf, size_t szbuf);
     size_t get_size() { return to_nbs(NULL,0); } /**< return the size of the packet, including the packet header, */
+    size_t size() { return to_nbs(NULL,0); } /**< return the size of the packet, including the packet header, */
 
     size_t get_procpos () const { return pos_next; } /**< get the current (read) position of the raw packet data */
     /**
@@ -80,28 +57,21 @@ public:
     void set_procpos (size_t s) { pos_next = s; }
 
     /**
-     * @brief convert the packet to network byte sequence and save it to nbsbuf, include packet header
+     * @brief convert the packet to network byte sequence and save it to nbsbuf, including the packet header
      * @param nbsbuf : the buffer to be filled, in network byte sequence
      * @param szbuf : the size requested to be filled
      * @return the size of data copied to buffer, >0 on success, < 0 on error
      */
-    virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf) { std::cout << "wrong " << __func__ << std::endl; /* should never reach to this function, the d3packet_t should be a abstract class! */assert(0); return 0; }
+    virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf) { DS3_WRONGFUNC_RETVAL(-1); }
 
     /**
-     * @brief read the buffer in network byte sequence and save it to structure, include packet header
+     * @brief read the buffer in network byte sequence and save it to structure, including the packet header
      * @param nbsbuf : the buffer to be read, in network byte sequence
      * @param szbuf : the size of the buffer
      * @return the size of data processed, >0 on success, < 0 on error
      */
-    virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf) { std::cout << "wrong " << __func__ << std::endl; /* should never reach to this function, the d3packet_t should be a abstract class! */assert(0); return 0; }
-
-    /**
-     * @brief convert the packet header to network byte sequence and save it to nbsbuf
-     * @param nbsbuf : the buffer to be filled, in network byte sequence
-     * @param szbuf : the size requested to be filled
-     * @return the size of data copied to buffer, >0 on success, < 0 on error
-     */
-    virtual ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { std::cout << "wrong " << __func__ << std::endl; /* should never reach to this function, the d3packet_t should be a abstract class! */assert(0); return 0; } /**< get bytes of the packet, include MAC header */
+    virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf) { DS3_WRONGFUNC_RETVAL(-1); }
+    virtual ssize_t from_nbs (ds3_packet_buffer_t *buf, size_t pos) { DS3_WRONGFUNC_RETVAL(-1); }
 
     /**
      * @brief set the content of the packet, not include the header
@@ -109,14 +79,14 @@ public:
      * @param szbuf : the size of the data in the buffer
      * @return 0 on success, < 0 on error
      */
-    virtual int set_content (uint8_t *nbsbuf, size_t szbuf);
+    //virtual int set_content (uint8_t *nbsbuf, size_t szbuf);
 
     /**
      * @brief set the content of the packet, not include the header
      * @param newbuf : the buffer contains the content
      * @return 0 on success, < 0 on error
      */
-    virtual int set_content (std::vector<uint8_t> & newbuf) { buffer = newbuf; return 0; }
+    //virtual int set_content (std::vector<uint8_t> & newbuf) { buffer = newbuf; return 0; }
 
     /**
      * @brief set the content of the packet, not include the header
@@ -124,16 +94,55 @@ public:
      * @param end1 : the end position of buffer
      * @return 0 on success, < 0 on error
      */
-    virtual int set_content (std::vector<uint8_t>::iterator & begin1, std::vector<uint8_t>::iterator & end1) { buffer.resize(0); std::copy (begin1, end1, buffer.begin()); return 0; }
+    //virtual int set_content (std::vector<uint8_t>::iterator & begin1, std::vector<uint8_t>::iterator & end1) { buffer.resize(0); std::copy (begin1, end1, buffer.begin()); return 0; }
 
-    std::vector<uint8_t> & get_content_ref (void) { return this->buffer; } /**< get the reference of the data content buffer */
 
-    virtual void dump (void) { std::cout << "wrong " << __func__ << std::endl; /* should never reach to this function, the d3packet_t should be a abstract class! */assert(0); } /**< dump the content of packet */
+    /**
+     * @brief set the content of the packet, not include the header
+     * @param peer : the new content
+     * @return 0 on success, < 0 on error
+     */
+    virtual int set_content (ds3_packet_buffer_t *peer)
+        { this->buffer.resize(0); if (0 > this->insert_content(0, peer, peer->begin(), peer->end())) { return -1; } return 0; }
+
+    /**
+     * @brief insert content from peer
+     *
+     * @param pos_self : [in] the insert position(self)
+     * @param peer : [in,out] the buffer to be copied by this function
+     * @param begin_peer : [in] the start position of the content (peer)
+     * @param end_peer : [in] the end position of the content (peer)
+     *
+     * @return the size of data copied on success; < 0 on error
+     *
+     * insert content from peer. not include the header
+     */
+    ssize_t insert_content (size_t pos_self, ds3_packet_buffer_t *peer, size_t begin_peer, size_t end_peer)
+        { return this->buffer.insert(pos_self, peer, begin_peer, end_peer); }
+
+    //virtual ssize_t get_pkt_bytes (size_t pos, uint8_t *nbsbuf, size_t szbuf);
+    //ssize_t get_pkt_bytes (size_t pos, std::vector<uint8_t> & nbsbuf, size_t szbuf);
+    /** @brief insert a part of packet byte to peer, the position is start from the packet header */
+    virtual ds3_packet_buffer_t * insert_to (size_t pos_peer, ds3_packet_buffer_t *peer, size_t begin_self, size_t end_self)
+        { DS3_WRONGFUNC_RETVAL(NULL); }
+
+    //std::vector<uint8_t> & get_content_ref (void) { return this->buffer; } /**< get the reference of the data content buffer */
+    ds3_packet_buffer_t & get_content_ref (void) { return this->buffer; } /**< get the reference of the data content buffer */
 
 protected:
-    std::vector<uint8_t> buffer; /**< the content buffer */
+    ds3_packet_buffer_t buffer; // std::vector<uint8_t> buffer; /**< the content buffer */
 
-    void dump_content (void);
+    /**
+     * @brief convert the packet header to network byte sequence and save it to nbsbuf
+     * @param nbsbuf : the buffer to be filled, in network byte sequence
+     * @param szbuf : the size requested to be filled
+     * @return the size of data copied to buffer, >0 on success, < 0 on error
+     */
+    //virtual ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { DS3_WRONGFUNC_RETVAL(-1); } /**< get bytes of the packet, include MAC header */
+
+#if CCFDEBUG
+    void dump_content (void) { this->get_content_ref().dump(); } /**< dump the content */
+#endif
 
 private:
     size_t pos_next; /**< the current processed start possition; used for send/recv-ing packet/segment */
@@ -144,14 +153,6 @@ private:
  */
 class ds3packet_ccf_t : public ds3packet_t {
 public:
-    virtual ~ds3packet_ccf_t() { std::cout << "Destroy " << __func__ << std::endl; memset (&(this->ccfhdr), 0, sizeof(this->ccfhdr)); }
-
-    virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
-    virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf);
-    virtual ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { return ds3hdr_ccf_to_nbs (nbsbuf, szbuf, &(this->ccfhdr)); }
-
-    virtual void dump (void);
-
     /**
      * @brief set the CCF segment header
      * @param chdr : the CCF header structure to be saved
@@ -160,7 +161,19 @@ public:
     int set_header (ds3hdr_ccf_t * chdr) { if (NULL == chdr) {return -1;} memmove (&(this->ccfhdr), chdr, sizeof (*chdr)); return 0; }
     ds3hdr_ccf_t & get_header (void) { return ccfhdr; } /**< get a reference of the CCF segment header */
 
+#if CCFDEBUG
+    virtual void dump (void);
+#endif
+
+    virtual ~ds3packet_ccf_t() { std::cout << "Destroy " << __func__ << std::endl; memset (&(this->ccfhdr), 0, sizeof(this->ccfhdr)); }
+
+    virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
+    virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf);
+
+    //virtual ds3_packet_buffer_t * insert_to (size_t pos_peer, ds3_packet_buffer_t *peer, size_t begin_self, size_t end_self);
+
 private:
+    ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { return ds3hdr_ccf_to_nbs (nbsbuf, szbuf, &(this->ccfhdr)); }
     ds3hdr_ccf_t ccfhdr; /**< the CCF segment header */
 };
 
@@ -250,7 +263,7 @@ protected:
      * @param macbuffer : the MAC packet raw data
      * @return 0 on success, < 0 on error
      */
-    virtual int signify_packet (std::vector<uint8_t> & macbuffer) = 0;
+    virtual int signify_packet (ds3_packet_buffer_t & macbuffer) = 0;
     /**
      * @brief signify that a piggyback request was extracted from the segments received
      * @param sc : SID Cluster ID
