@@ -845,10 +845,10 @@ int
 main1(void)
 {
     test_pktclass ();
-    test_ccfhdr();
     test_machdr();
-    test_pack();
+    test_ccfhdr();
     test_pktcnt ();
+    test_pack();
     return 0;
 }
 #endif
