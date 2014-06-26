@@ -146,16 +146,28 @@ bool
 ds3packet_nbsmac_t::operator == (const ds3packet_nbsmac_t & rhs)
 {
     if (this->machdr.length != rhs.machdr.length) {
+#if DEBUG
+std::cout << "[pktnbs.equ?] hdr.length: lhs(self)=" << this->machdr.length << " != rhs=" << rhs.machdr.length << std::endl;
+#endif // DEBUG
         return false;
     }
     if (this->machdr.sequence != rhs.machdr.sequence) {
+#if DEBUG
+std::cout << "[pktnbs.equ?] hdr.sequence: lhs(self)=" << this->machdr.sequence << " != rhs=" << rhs.machdr.sequence << std::endl;
+#endif // DEBUG
         return false;
     }
     if (this->buffer.size() != rhs.buffer.size()) {
+#if DEBUG
+std::cout << "[pktnbs.equ?] buffer.size: lhs(self)=" << this->buffer.size() << " != rhs=" << rhs.buffer.size() << std::endl;
+#endif // DEBUG
         return false;
     }
     for (ssize_t i = 0; i < this->buffer.size(); i ++) {
         if (this->buffer[i] != rhs.buffer[i]) {
+#if DEBUG
+std::cout << "[pktnbs.equ?] buffer.at(" << i << "): lhs(self)=" << this->buffer[i] << " != rhs=" << rhs.buffer[i] << std::endl;
+#endif // DEBUG
             return false;
         }
     }
@@ -718,7 +730,7 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
         pktns2 = dynamic_cast<ds3packet_nbsmac_t *>(g_pkt_in_recycle[pktns1->get_header().sequence]);
         REQUIRE (NULL != pktns2);
         if (*pktns1 != *pktns2) {
-            std::cout << "packet(" << i << ") not equal!" << std::endl;
+            std::cout << "packet(" << i << ") not equal! sequence=" << pktns1->get_header().sequence << std::endl;
             ret = -1;
         }
     }

@@ -151,21 +151,40 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
     // find the left most and right most positions which have continual sequence number
     std::vector<ds3packet_ccf_t *>::iterator itprev = itins;
     std::vector<ds3packet_ccf_t *>::iterator itleft = itins;
+
     itprev = itleft;
+    if (itleft != pkglst.begin()) {
+        itleft --;
+    }
     for (; itleft != pkglst.begin(); itleft --) {
-        if ((*itleft)->get_header().sequence + 1 < (*itprev)->get_header().sequence) {
+        if ((*itleft)->get_header().sequence + 1 != (*itprev)->get_header().sequence) {
             break;
         }
         itprev = itleft;
     }
+    if (itleft != pkglst.begin()) {
+        itleft ++;
+    } else {
+        if (itprev != itleft) {
+            if ((*itleft)->get_header().sequence + 1 != (*itprev)->get_header().sequence) {
+                itleft = itprev;
+            }
+        }
+    }
+
     std::vector<ds3packet_ccf_t *>::iterator itright = itins;
     itprev = itright;
-    for (; itright != pkglst.end(); itright ++) {
-        if ((*itprev)->get_header().sequence + 1 < (*itright)->get_header().sequence) {
+    if (itright != pkglst.end()) {
+        itright ++;
+    }
+    for (; itright != pkglst.end(); ) {
+        if ((*itprev)->get_header().sequence + 1 != (*itright)->get_header().sequence) {
             break;
         }
         itprev = itright;
+        itright ++;
     }
+
     // debug:
     //assert (itright == pkglst.end());
 
@@ -232,6 +251,14 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         if (hdrbuf.size() <= 0) {
             // this is the first segment of the packet
 
+            // make sure this segment has MAC header!!
+            if ((*itleft)->get_header().pfi == 0) {
+                // the whole segment is part of packet, not MAC header!
+                // we should skip to next one!
+                itleft ++;
+                continue;
+            }
+
             assert (hdrbuf.size() == 0);
             it1st = itleft;
 
@@ -264,6 +291,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             if ((*itleft)->get_header().pfi == 1) {
                 // this should be the last segment of the packet
                 // attach the content from the buffer to hdrbuf by size of offmac
+                assert ((*itleft)->get_header().offmac > 0);
                 hdrbuf.insert (hdrbuf.end(), &cntbufref, cntbufref.begin(), cntbufref.begin() + (*itleft)->get_header().offmac); //hdrbuf.insert (hdrbuf.end(), cntbufref.begin(), cntbufref.begin() + (*itleft)->get_header().offmac);
                 flg_data_left = true;
             } else {
@@ -279,6 +307,9 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                 if ((*itleft)->get_header().pfi == 1) {
                     // Error: impossible to here! or there's error in the packet
                     flg_corrupted = true;
+#if DEBUG
+std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ", szmhdr=" << szmhdr << " <=0, and pfi=1" << std::endl;
+#endif
                 } else {
                     // no enough header bytes
                     // wait for next one?
@@ -287,14 +318,20 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             } else {
                 // get the header successfully
                 if (hdrbuf.size() < (szmhdr)) {
-                    szmhdr = 0; // reset the header so that it continue
                     if ((*itleft)->get_header().pfi == 1) {
                         // Error: corrupted packet
                         flg_corrupted = true;
+#if DEBUG
+std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ") < szmhdr=" << szmhdr
+    << ", and pfi=1"
+    << ", read offset =" << (*itleft)->get_procpos()
+    << std::endl;
+#endif
                     } else {
                         // no enough header bytes
                         // wait for next one?
                     }
+                    szmhdr = 0; // reset the header so that it continue
                     // no enough content bytes
                     // wait for next one?
                     flg_continue = true;
@@ -312,11 +349,19 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
 #else // 2
                 if (it1st != itleft) {
                     if ((*it1st)->get_header().offmac > 0) {
+#if DEBUG
+                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size());
+#else
+                        (*it1st)->set_procpos((*it1st)->size());
+#endif
                         it1st ++;
                     }
                     if (it1st != itleft) {
                         std::vector<ds3packet_ccf_t *>::iterator ittmp = it1st;
                         for (; ittmp != itleft; ittmp ++) {
+#if DEBUG
+std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
+#endif
                             this->drop_packet( *ittmp );
                         }
 
@@ -385,6 +430,14 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
 #else // 2
                 if (it1st != itleft) {
                     if ((*it1st)->get_header().offmac > 0) {
+                        // this is the start of segment,
+                        // since it have other content at the begin,
+                        // so we just set the last position to max position:
+#if DEBUG
+                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size());
+#else
+                        (*it1st)->set_procpos((*it1st)->size());
+#endif
                         it1st ++;
                     }
                     if (it1st != itleft) {
