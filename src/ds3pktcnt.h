@@ -5,11 +5,7 @@
  * @version 1.0
  * @date    2014-06-20
  * @copyright Yunhui Fu (2014)
- */
-#ifndef _DS3PKGCNT_H
-#define _DS3PKGCNT_H
-
-/**
+ *
  * To support both the NBS and NS2 Packet, we abstruct the packet's content to a ds3_packet_buffer_t.
  * So we can test the segmentation/assembly code with either the regular NBS packet format (it can also be used in a real project),
  * or Packet class format for NS2 simulator.
@@ -26,6 +22,8 @@
  * The class have to include a ds3_packet_buffer_t member other than derived from it,
  * because the ds3packet_t is used internally(ds3packet_ccf_t) for CCF segmentation.
  */
+#ifndef _DS3PKGCNT_H
+#define _DS3PKGCNT_H
 
 #include <stdint.h> // uint16_t
 #include <string.h> // memcmp
