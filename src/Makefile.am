@@ -5,6 +5,7 @@ bin_PROGRAMS=unittest
 unittest_SOURCES= \
     ds3pktcnt.cc \
     ds3pktccf.cc \
+    testmac.cc \
     testccf.cc \
     unittest.cc \
     $(NULL)

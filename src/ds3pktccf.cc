@@ -11,6 +11,20 @@
 
 #include "ds3pktccf.h"
 
+const char *
+ds3_event2desc (ds3event_t e)
+{
+#define MYCASE(v) case v: return #v
+    switch (e) {
+        MYCASE(DS3EVT_MAP);
+        MYCASE(DS3EVT_PKT);
+        MYCASE(DS3EVT_TMRPKT);
+        MYCASE(DS3EVT_TMRREQ);
+    }
+    return "UNKNOWN";
+#undef MYCASE
+}
+
 #if 0
 /**
  * @brief set the content of the packet, not include the header

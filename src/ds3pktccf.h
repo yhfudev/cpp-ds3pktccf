@@ -32,6 +32,7 @@
 
 #define DS3_MULTIPLIER_REQUEST 8 /**< the value of the default Multiplier (Number of Bytes Requested in Annex C) */
 
+const char * ds3_event2desc (ds3event_t e);
 
 /**
  * @brief The base class for all types of the packet

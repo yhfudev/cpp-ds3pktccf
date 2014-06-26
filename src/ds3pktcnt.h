@@ -39,19 +39,6 @@
 #define CCFDEBUG 1
 #endif
 
-#if 1
-/**
- * @brief The DOCSIS MAC header structure
- */
-typedef struct _ds3hdr_mac_t {
-    uint16_t sequence; /**< The sequence # of the MAC packet */
-    uint16_t length; /**< The length of the data in the MAC packet */
-} ds3hdr_mac_t;
-
-ssize_t ds3hdr_mac_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * refhdr);
-ssize_t ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethdr);
-#endif
-
 /**
  * @brief The CCF segment header structure
  */
@@ -356,21 +343,6 @@ ds3_packet_buffer_t::at(size_t i)
     DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS_MINI(ds3_real_type)
 
 /**
- * @brief the packet content class for NS2 Packet class
- */
-class ds3_packet_buffer_ns2_t : public ds3_packet_buffer_t {
-public:
-#if CCFDEBUG
-    virtual void dump (void);
-#endif
-    ds3_packet_buffer_ns2_t() {}
-
-    virtual uint8_t & at(size_t i);
-    virtual ssize_t block_size_at (size_t pos);
-    DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS(ds3_packet_buffer_ns2_t);
-};
-
-/**
  * @brief the packet content class for network byte sequence buffer
  */
 class ds3_packet_buffer_nbs_t : public ds3_packet_buffer_t {
@@ -395,22 +367,31 @@ public:
 inline int ds3_packet_buffer_nbs_t::resize(size_t sznew) { this->buffer.resize(sznew); return 0; }
 inline uint8_t & ds3_packet_buffer_nbs_t::at(size_t i) { return this->buffer[i]; }
 
-/**
- * @brief the packet content class for network byte sequence buffer of type DOCSIS MAC
- */
-class ds3_packet_buffer_nbsmac_t : public ds3_packet_buffer_nbs_t {
-public:
-    ds3_packet_buffer_nbsmac_t() {}
-    virtual ssize_t block_size_at (size_t pos);
-    DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS_MINI(ds3_packet_buffer_nbsmac_t);
-};
-
-inline ds3_packet_buffer_nbsmac_t::ds3_packet_buffer_nbsmac_t(ds3_packet_buffer_t *peer, size_t begin, size_t end)
-    : ds3_packet_buffer_nbs_t (peer, begin, end) { }
+/* the real packet is stored in peer which is created by this micro */
+#define DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_real_type, arg_peer) \
+    if (NULL == arg_peer) { \
+        /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */ \
+        ds3_packet_buffer_t * newpkt = this->create (this, begin_self, end_self); \
+        return newpkt; \
+    } \
+    ds3_real_type *peer = dynamic_cast<ds3_real_type *>(arg_peer); \
+    if (NULL == peer) { \
+        assert (0); \
+        return NULL; \
+    } \
+    if ((ssize_t)pos_peer > peer->size()) { \
+        return NULL; \
+    } \
+    if ((ssize_t)begin_self >= this->size()) { \
+        /* do nothing */ \
+        return arg_peer; \
+    } \
+    if ((ssize_t)end_self > this->size()) { \
+        end_self = this->size(); \
+    }
 
 #if CCFDEBUG
 int test_ccfhdr (void);
-int test_machdr (void);
 int test_pktcnt (void);
 #endif
 

@@ -12,102 +12,6 @@
 
 #include "ds3pktcnt.h"
 
-#if 0
-/**
- * @brief The DOCSIS MAC header structure
- */
-typedef struct _ds3hdr_mac_t {
-    uint16_t sequence; /**< The sequence # of the MAC packet */
-    uint16_t length; /**< The length of the data in the MAC packet */
-} ds3hdr_mac_t;
-
-ssize_t ds3hdr_mac_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * refhdr);
-ssize_t ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethdr);
-#endif
-
-/**
- * @brief convert struct to network byte sequence
- *
- * @param nbsbuf : [in,out] the buffer pointer contains the network byte sequence of the data, to be filled by this function
- * @param szbuf : [in] the size  of the buffer passed in
- * @param refhdr : [in] the pointer of the structure
- *
- * @return the byte size of the header processed, >0 on success, < 0 on error
- *
- * convert struct to network byte sequence
- */
-ssize_t
-ds3hdr_mac_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * refhdr)
-{
-    ssize_t ret = sizeof(uint16_t) * 2;
-    uint16_t v16 = 0;
-    uint8_t * p = nbsbuf;
-
-    if (szbuf == 0) {
-        /* return size of header*/
-        return (ret);
-    }
-    if (NULL == nbsbuf) {
-        return -1;
-    }
-    if ((ssize_t)szbuf < ret) {
-        return -1;
-    }
-    if (NULL == refhdr) {
-        return -1;
-    }
-
-    v16 = htons (refhdr->sequence);
-    memmove (p, &v16, sizeof (v16));
-    p += sizeof(v16);
-
-    v16 = htons (refhdr->length);
-    memmove (p, &v16, sizeof (v16));
-    p += sizeof(v16);
-
-    return (ret);
-}
-
-/**
- * @brief convert network byte sequence to structure
- *
- * @param nbsbuf : [in] the buffer pointer contains the network byte sequence of the data
- * @param szbuf : [in] the size  of the buffer passed in
- * @param rethdr : [out] the pointer of the structure to be filled by this function
- *
- * @return the byte size of the header processed, >0 on success, < 0 on error
- *
- * convert network byte sequence to structure
- */
-ssize_t
-ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethdr)
-{
-    ssize_t ret = sizeof(uint16_t) * 2;
-    uint8_t * p = nbsbuf;
-
-    if (szbuf == 0) {
-        return ret;
-    }
-    if (NULL == nbsbuf) {
-        return -1;
-    }
-    if ((ssize_t)szbuf < ret) {
-        return -1;
-    }
-    if (NULL == rethdr) {
-        return -1;
-    }
-    memset (rethdr, 0, sizeof (*rethdr));
-
-    rethdr->sequence = ntohs (*((uint16_t *)p));
-    p = p + 2;
-
-    rethdr->length = ntohs (*((uint16_t *)p));
-    p = p + 2;
-
-    return (ret);
-}
-
 /**
  * @brief convert struct to network byte sequence
  *
@@ -261,112 +165,6 @@ ds3_packet_buffer_t::insert (size_t pos_self, ds3_packet_buffer_t *peer, size_t 
     return (end_peer - begin_peer);
 }
 
-/* the real packet is stored in peer which is created by this micro */
-#define DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_real_type, arg_peer) \
-    if (NULL == arg_peer) { \
-        /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */ \
-        ds3_packet_buffer_t * newpkt = this->create (this, begin_self, end_self); \
-        return newpkt; \
-    } \
-    ds3_real_type *peer = dynamic_cast<ds3_real_type *>(arg_peer); \
-    if (NULL == peer) { \
-        assert (0); \
-        return NULL; \
-    } \
-    if ((ssize_t)pos_peer > peer->size()) { \
-        return NULL; \
-    } \
-    if ((ssize_t)begin_self >= this->size()) { \
-        /* do nothing */ \
-        return arg_peer; \
-    } \
-    if ((ssize_t)end_self > this->size()) { \
-        end_self = this->size(); \
-    }
-
-ds3_packet_buffer_t *
-ds3_packet_buffer_ns2_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, size_t begin_self, size_t end_self)
-{
-    DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_packet_buffer_ns2_t, arg_peer);
-    // TODO: add the content between [begin_self, end_self) to peer
-    assert (0);
-    return arg_peer;
-}
-
-ds3_packet_buffer_t *
-ds3_packet_buffer_ns2_t::copy_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, size_t begin_self, size_t end_self)
-{
-    DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_packet_buffer_ns2_t, arg_peer);
-    // TODO: copy the content between [begin_self, end_self) to peer
-    assert (0);
-    return arg_peer;
-}
-
-ds3_packet_buffer_ns2_t::ds3_packet_buffer_ns2_t(ds3_packet_buffer_t *arg_peer, size_t begin, size_t end)
-{
-    ds3_packet_buffer_ns2_t * peer = dynamic_cast<ds3_packet_buffer_ns2_t *> (arg_peer);
-    assert (NULL != peer);
-    assert (0); // TODO
-}
-
-int
-ds3_packet_buffer_ns2_t::resize(size_t sznew)
-{
-    assert (0); // TODO
-    return -1;
-}
-
-ssize_t
-ds3_packet_buffer_ns2_t::size(void)
-{
-    assert (0); // TODO
-    return -1;
-}
-
-uint8_t &
-ds3_packet_buffer_ns2_t::at(size_t i)
-{
-    static uint8_t t = -1;
-    DS3_WRONGFUNC_RETVAL(t);
-}
-
-ssize_t
-ds3_packet_buffer_ns2_t::block_size_at (size_t pos)
-{
-    // size of sub-block (including header+content)
-    assert (0); // TODO
-    return -1;
-}
-
-ssize_t
-ds3_packet_buffer_ns2_t::to_nbs (uint8_t *nbsbuf, size_t szbuf)
-{
-    assert (0); // TODO
-    return -1;
-}
-
-ssize_t
-ds3_packet_buffer_ns2_t::from_nbs (uint8_t *nbsbuf, size_t szbuf)
-{
-    assert (0); // TODO
-    return -1;
-}
-
-#if CCFDEBUG
-void
-ds3_packet_buffer_ns2_t::dump (void)
-{
-    assert (0); // TODO
-    std::cout << "   content: " ;// << std::endl;
-    //std::vector<uint8_t>::iterator itb = this->buffer.begin();
-    //std::vector<uint8_t>::iterator ite = this->buffer.end();
-    //for (; itb != ite; itb ++ ) {
-    //    printf (" %02X", *itb);
-    //}
-    std::cout << std::endl;
-}
-#endif
-
 ssize_t ds3_packet_buffer_nbs_t::size(void) { return this->buffer.size(); }
 
 ssize_t
@@ -495,23 +293,6 @@ ds3_packet_buffer_nbs_t::copy_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer
     return arg_peer;
 }
 
-ssize_t
-ds3_packet_buffer_nbsmac_t::block_size_at (size_t pos)
-{
-    // size of sub-block (including header+content)
-    ds3hdr_mac_t machdr;
-    if (pos >= (this->buffer).size()) {
-        return -1;
-    }
-    memset (&machdr, 0, sizeof(machdr));
-    assert ((this->buffer).size() > pos);
-    ssize_t szhdr = ds3hdr_mac_from_nbs (&(this->buffer[pos]), (this->buffer).size() - pos, &machdr);
-    if (szhdr < 0) {
-        return -1;
-    }
-    return ( szhdr + (ssize_t)(machdr.length) );
-}
-
 #if CCFDEBUG
 void
 ds3_packet_buffer_nbs_t::dump (void)
@@ -526,7 +307,8 @@ ds3_packet_buffer_nbs_t::dump (void)
 }
 #endif
 
-#if TESTCCF
+
+#if CCFDEBUG
 
 #ifndef REQUIRE
 #define REQUIRE assert
@@ -570,35 +352,6 @@ test_ccfhdr (void)
 #undef  MYCHK1
 }
 
-int
-test_machdr (void)
-{
-    ds3hdr_mac_t machdr, machdr2, *ph;
-    uint8_t buffer[sizeof (machdr) * 2];
-
-    ph = &machdr;
-    memset (ph, 0, sizeof(*ph));
-    ph->length = 530;
-    ph->sequence = 17;
-
-    ph = &machdr2;
-    memset (ph, 0, sizeof(*ph));
-
-    ds3hdr_mac_to_nbs (buffer, sizeof (buffer), &machdr);
-    ds3hdr_mac_from_nbs (buffer, sizeof (buffer), &machdr2);
-#define MYCHK1(name1) REQUIRE (machdr.name1 == machdr2.name1)
-    MYCHK1(length);
-    MYCHK1(sequence);
-
-    if (0 != memcmp (&machdr, &machdr2, sizeof(machdr))) {
-        printf ("[%s()] Error in machdr2!\n", __func__);
-        return -1;
-    }
-    printf ("[%s()] Passed !\n", __func__);
-    return 0;
-#undef  MYCHK1
-}
-
 #ifndef REQUIRE
 #define REQUIRE assert
 #endif
@@ -611,7 +364,7 @@ test_pktcnt (void)
     uint8_t buf2[32];
     memset (&buf1, 0x11, sizeof(buf1));
     memset (&buf2, 0x22, sizeof(buf2));
-    ds3_packet_buffer_nbsmac_t cntnbs;
+    ds3_packet_buffer_nbs_t cntnbs;
     ds3_packet_buffer_t cnt1;
 
     cntnbs.append(buf1, sizeof(buf1));

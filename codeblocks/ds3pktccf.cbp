@@ -41,6 +41,8 @@
 		<Unit filename="../src/ds3pktcnt.h" />
 		<Unit filename="../src/testccf.cc" />
 		<Unit filename="../src/testccf.h" />
+		<Unit filename="../src/testmac.cc" />
+		<Unit filename="../src/testmac.h" />
 		<Unit filename="../src/unittest.cc" />
 		<Extensions>
 			<code_completion />

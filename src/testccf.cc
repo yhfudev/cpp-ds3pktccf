@@ -5,15 +5,12 @@
  * @version 1.0
  * @date    2014-06-19
  * @copyright Yunhui Fu (2014)
- * @bug can't pass test case test_pack_fix1()
  */
 
 #include <stdio.h>
 
 #include "ds3pktccf.h"
 #include "testccf.h"
-
-int add_channel_packet (ds3packet_t * p);
 
 #if CCFDEBUG
 void
@@ -266,30 +263,6 @@ ds3packet_nbsmac_t::copy_to (size_t pos, uint8_t *nbsbuf, size_t szbuf)
 }
 #endif
 
-/* the real packet is stored in peer which is created by this micro */
-#define DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_real_type, arg_peer) \
-    ds3_real_type *peer = NULL; \
-    if (NULL == arg_peer) { \
-        /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */ \
-        arg_peer = peer = new ds3_real_type (); \
-    } else { \
-        peer = dynamic_cast<ds3_real_type *>(arg_peer); \
-    } \
-    if (NULL == peer) { \
-        assert (0); \
-        return NULL; \
-    } \
-    if ((ssize_t)pos_peer > peer->size()) { \
-        return NULL; \
-    } \
-    if (begin_self >= this->size()) { \
-        /* do nothing */ \
-        return arg_peer; \
-    } \
-    if (end_self > this->size()) { \
-        end_self = this->size(); \
-    }
-
 /**
  * @brief get the raw data bytes(network byte sequence) of the packet
  *
@@ -329,9 +302,10 @@ ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, s
         if (NULL == peer) {
             // create a new one, and try to append to the current arg_peer
             // we only support ds3_packet_buffer_nbsmac_t
-            ds3_packet_buffer_nbsmac_t *p = new ds3_packet_buffer_nbsmac_t ();
+            ds3_packet_buffer_nbsmac_t p;
             assert (NULL != arg_peer);
-            arg_peer->insert(0, p, 0, 0);
+            arg_peer->insert(0, &p, 0, 0);
+
             if (NULL != (arg_peer)->get_buffer()) {
                 /* it's a base class, and it stored the content from other ns2 content */
                 peer = dynamic_cast<ds3_real_type *>((arg_peer)->get_buffer());
@@ -353,6 +327,7 @@ ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, s
         end_self = this->size();
     }
 #endif
+
     assert (NULL != peer);
     if (begin_self >= end_self) {
         return arg_peer;
@@ -408,19 +383,8 @@ ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, s
     return arg_peer;
 }
 
-static const char *
-ds3_event2desc (ds3event_t e)
-{
-#define MYCASE(v) case v: return #v
-    switch (e) {
-        MYCASE(DS3EVT_MAP);
-        MYCASE(DS3EVT_PKT);
-        MYCASE(DS3EVT_TMRPKT);
-        MYCASE(DS3EVT_TMRREQ);
-    }
-    return "UNKNOWN";
-#undef MYCASE
-}
+
+int add_channel_packet (ds3packet_t * p);
 
 int
 ds3_ccf_pack_nbs_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id)
