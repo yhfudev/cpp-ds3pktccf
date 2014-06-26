@@ -367,7 +367,7 @@ public:
 inline int ds3_packet_buffer_nbs_t::resize(size_t sznew) { this->buffer.resize(sznew); return 0; }
 inline uint8_t & ds3_packet_buffer_nbs_t::at(size_t i) { return this->buffer[i]; }
 
-/* the real packet is stored in peer which is created by this micro */
+/* the real packet is stored in peer which is created by this micro, for ds3_packet_buffer_t::insert_to() and copy_to() */
 #define DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_real_type, arg_peer) \
     if (NULL == arg_peer) { \
         /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */ \

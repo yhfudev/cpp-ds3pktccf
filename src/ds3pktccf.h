@@ -121,9 +121,19 @@ public:
     ssize_t insert_content (size_t pos_self, ds3_packet_buffer_t *peer, size_t begin_peer, size_t end_peer)
         { return this->buffer.insert(pos_self, peer, begin_peer, end_peer); }
 
-    //virtual ssize_t get_pkt_bytes (size_t pos, uint8_t *nbsbuf, size_t szbuf);
-    //ssize_t get_pkt_bytes (size_t pos, std::vector<uint8_t> & nbsbuf, size_t szbuf);
-    /** @brief insert a part of packet byte to peer, the position is start from the packet header */
+    /**
+     * @brief get the raw data bytes(network byte sequence) of the packet
+     *
+     * @param pos_peer : [in] the insert position of buffer
+     * @param peer : [out] the buffer to be filled
+     * @param begin_self : [in] the start position of the byte sequence, the position is start from the packet header
+     * @param end_self : [in] the end position
+     *
+     * @return a new buffer(if peer==NULL) or peer on success, NULL on error
+     *
+     * get the raw data bytes(network byte sequence) of the packet
+     *
+     */
     virtual ds3_packet_buffer_t * insert_to (size_t pos_peer, ds3_packet_buffer_t *peer, size_t begin_self, size_t end_self)
         { DS3_WRONGFUNC_RETVAL(NULL); }
 
@@ -148,6 +158,46 @@ protected:
 private:
     size_t pos_next; /**< the current processed start possition; used for send/recv-ing packet/segment */
 };
+
+/* check the arguments for ds3packet_t::insert_to() */
+#define DS3_DYNCST_CHKRET_DS3PKT_BUFFER(ds3_real_type, arg_peer) \
+    ds3_real_type *peer = NULL; \
+    if (NULL == (arg_peer)) { \
+        /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */ \
+        (arg_peer) = peer = new ds3_real_type (); \
+    } else { \
+        peer = dynamic_cast<ds3_real_type *>(arg_peer); \
+        if (NULL == peer) { \
+            if (NULL != (arg_peer)->get_buffer()) { \
+                /* it's a base class, and it stored the content from other ns2 content */ \
+                peer = dynamic_cast<ds3_real_type *>((arg_peer)->get_buffer()); \
+            } \
+        } \
+        if (NULL == peer) { \
+            /* create a new one, and try to append to the current arg_peer */ \
+            ds3_real_type p; \
+            assert (NULL != (arg_peer)); \
+            (arg_peer)->insert(0, &p, 0, 0); \
+            if (NULL != (arg_peer)->get_buffer()) { \
+                /* it's a base class, and it stored the content from other ns2 content */ \
+                peer = dynamic_cast<ds3_real_type *>((arg_peer)->get_buffer()); \
+            } \
+        } \
+    } \
+    if (NULL == peer) { \
+        assert (0); \
+        return NULL; \
+    } \
+    if ((ssize_t)pos_peer > peer->size()) { \
+        return NULL; \
+    } \
+    if (begin_self >= this->size()) { \
+        /* do nothing */ \
+        return (arg_peer); \
+    } \
+    if (end_self > this->size()) { \
+        end_self = this->size(); \
+    }
 
 /**
  * @brief The packet class for DS3 CCF segment

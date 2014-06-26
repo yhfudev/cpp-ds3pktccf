@@ -22,6 +22,25 @@ There are a few different ways you can install DS3PKTCCF:
 
 ## Examples
 
+    class ds3_packet_buffer_nbs_t : public ds3_packet_buffer_t {
+    public:
+        ds3_packet_buffer_nbs_t() {}
+
+        ssize_t append (std::vector<uint8_t>::iterator &begin1, std::vector<uint8_t>::iterator &end1);
+        ssize_t append (uint8_t *buf, size_t sz);
+        int append_to (std::vector<uint8_t> & buffer1);
+
+        virtual uint8_t & at(size_t i);
+        DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS(ds3_packet_buffer_nbs_t);
+    };
+
+    class ds3_packet_buffer_nbsmac_t : public ds3_packet_buffer_nbs_t {
+    public:
+        ds3_packet_buffer_nbsmac_t() {}
+        virtual ssize_t block_size_at (size_t pos);
+        DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS_MINI(ds3_packet_buffer_nbsmac_t);
+    };
+
     class ds3packet_nbsmac_t : public ds3packet_t {
     public:
         virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);

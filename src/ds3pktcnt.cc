@@ -258,34 +258,7 @@ ds3_packet_buffer_nbs_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_pe
 ds3_packet_buffer_t *
 ds3_packet_buffer_nbs_t::copy_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, size_t begin_self, size_t end_self)
 {
-#if 1
     DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_packet_buffer_nbs_t, arg_peer);
-#else
-#ifdef ds3_real_type
-#undef ds3_real_type
-#endif
-#define ds3_real_type ds3_packet_buffer_nbs_t
-    if (NULL == arg_peer) {
-        /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */
-        ds3_real_type * newpkt = new ds3_real_type (this, begin_self, end_self);
-        return newpkt;
-    }
-    ds3_real_type *peer = dynamic_cast<ds3_real_type *>(arg_peer);
-    if (NULL == peer) {
-        assert (0);
-        return NULL;
-    }
-    if ((ssize_t)pos_peer > peer->size()) {
-        return NULL;
-    }
-    if ((ssize_t)begin_self >= this->size()) {
-        /* do nothing */
-        return arg_peer;
-    }
-    if ((ssize_t)end_self > this->size()) {
-        end_self = this->size();
-    }
-#endif
     // add the content between [begin_self, end_self) to peer
     // peer has to be the same typs as this
     peer->buffer.insert(peer->buffer.begin() + pos_peer, buffer.begin() + begin_self, buffer.begin() + end_self);

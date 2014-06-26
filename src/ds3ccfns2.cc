@@ -7,6 +7,7 @@
  * @copyright Yunhui Fu (2014)
  */
 
+#include <iostream>
 #include "ds3ccfns2.h"
 
 ds3_packet_buffer_t *
@@ -92,3 +93,51 @@ ds3_packet_buffer_ns2_t::dump (void)
 }
 #endif
 
+#if CCFDEBUG
+void
+ds3packet_ns2mac_t::dump (void)
+{
+    this->dump_content ();
+}
+#endif
+
+ssize_t
+ds3packet_ns2mac_t::to_nbs (uint8_t *nbsbuf, size_t szbuf)
+{
+    ssize_t szret = -1;
+    assert (0); // TODO:
+    return szret;
+}
+
+ssize_t
+ds3packet_ns2mac_t::from_nbs (uint8_t *nbsbuf, size_t szbuf)
+{
+    ssize_t szret = -1;
+    assert (0); // TODO:
+    return szret;
+}
+
+ssize_t
+ds3packet_ns2mac_t::from_nbs (ds3_packet_buffer_t *peer, size_t pos_peer)
+{
+    ssize_t szret = -1;
+    assert (0); // TODO:
+    return szret;
+}
+
+/**
+ * This function only support ns2 Packet buffer!
+ */
+ds3_packet_buffer_t *
+ds3packet_ns2mac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, size_t begin_self, size_t end_self)
+{
+    DS3_DYNCST_CHKRET_DS3PKT_BUFFER(ds3_packet_buffer_ns2_t, arg_peer);
+
+    assert (NULL != peer);
+    if (begin_self >= end_self) {
+        return arg_peer;
+    }
+
+    assert (0); // TODO:
+    return NULL;
+}
