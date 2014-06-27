@@ -285,10 +285,6 @@ ds3_packet_buffer_nbs_t::dump (void)
 
 #if CCFDEBUG
 
-#ifndef REQUIRE
-#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
-#endif
-
 int
 test_ccfhdr (void)
 {
@@ -326,10 +322,6 @@ test_ccfhdr (void)
     return 0;
 #undef  MYCHK1
 }
-
-#ifndef REQUIRE
-#define REQUIRE assert
-#endif
 
 int
 test_pktcnt (void)

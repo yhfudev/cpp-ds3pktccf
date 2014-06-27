@@ -145,12 +145,6 @@ clean_all_packets (void)
     g_pkt_in_channel.erase(g_pkt_in_channel.begin(), g_pkt_in_channel.end());
 }
 
-#ifndef REQUIRE
-#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
-#endif
-
-//#define NUM_PKT 5
-
 /**
  * @brief test pack/unpack
  */
@@ -470,12 +464,13 @@ test_pktclass (void)
 int
 main1(void)
 {
-    test_pktclass ();
-    test_machdr();
-    test_ccfhdr();
-    test_pktcnt ();
-    test_pack();
-    test_ns2ccf ();
+    srand(time(NULL));
+    REQUIRE (0 == test_pktclass());
+    REQUIRE (0 == test_machdr());
+    REQUIRE (0 == test_ccfhdr());
+    REQUIRE (0 == test_pktcnt());
+    REQUIRE (0 == test_pack());
+    REQUIRE (0 == test_ns2ccf());
     return 0;
 }
 #endif

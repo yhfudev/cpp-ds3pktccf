@@ -490,10 +490,6 @@ ds3packet_nbsmac_t::at(size_t i)
 #if CCFDEBUG
 #include <stdio.h>
 
-#ifndef REQUIRE
-#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
-#endif
-
 int
 test_machdr (void)
 {

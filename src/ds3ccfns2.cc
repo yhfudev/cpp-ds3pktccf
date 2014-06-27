@@ -622,10 +622,6 @@ ns2pkt_get_size (Packet *p)
 
 #include "testmac.h"
 
-#ifndef REQUIRE
-#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
-#endif
-
 /**
  * @brief the packet content class for NS2 Packet class
  */
@@ -1234,7 +1230,6 @@ test_ns2ccf_fix5 (void)
 int
 test_ns2ccf_random (void)
 {
-    srand(time(NULL));
     size_t nump = rand () % 100;
     return test_ns2ccf_gp (NULL, nump);
 }
@@ -1247,7 +1242,9 @@ test_ns2ccf (void)
     REQUIRE (0 == test_ns2ccf_fix3());
     REQUIRE (0 == test_ns2ccf_fix4());
     REQUIRE (0 == test_ns2ccf_fix5());
-    REQUIRE (0 == test_ns2ccf_random());
+    for (int i = 0; i < 10; i ++) {
+        REQUIRE (0 == test_ns2ccf_random());
+    }
     return 0;
 }
 

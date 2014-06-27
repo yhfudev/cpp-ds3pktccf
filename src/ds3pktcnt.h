@@ -409,6 +409,11 @@ inline uint8_t & ds3_packet_buffer_nbs_t::at(size_t i) { return this->buffer[i];
     }
 
 #if CCFDEBUG
+
+#ifndef REQUIRE
+#define REQUIRE(a) if (! (a)) { std::cerr << "FAIL :< " << #a << " @ " << __func__ << "()" << std::endl; assert(a); return -1; } else { std::cerr << "Passed :) " << #a << " @ " << __func__ << "()" << std::endl; }
+#endif
+
 int test_ccfhdr (void);
 int test_pktcnt (void);
 #endif
