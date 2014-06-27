@@ -392,7 +392,7 @@ test_pack_random (void)
     size_t nump = rand () % 100;
     if (nump < 2) {nump = 2;}
     size_t numg = rand () % (nump / 2);
-    return test_pack_gp(0, numg, NULL, nump);
+    return test_pack_gp(NULL, numg, NULL, nump);
 }
 
 int

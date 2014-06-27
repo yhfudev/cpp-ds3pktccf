@@ -474,6 +474,20 @@ ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, s
 }
 
 #if CCFDEBUG
+uint8_t &
+ds3packet_nbsmac_t::at(size_t i)
+{
+    assert ((ssize_t)sizeof (this->machdrbuf) >= ds3hdr_mac_to_nbs (NULL, 0, &(this->machdr)));
+    if ((ssize_t)i < ds3hdr_mac_to_nbs (NULL, 0, &(this->machdr))) {
+        this->hdr_to_nbs (this->machdrbuf, sizeof(this->machdrbuf));
+        return this->machdrbuf[i];
+    }
+    assert ((ssize_t)i >= ds3hdr_mac_to_nbs (NULL, 0, &(this->machdr)));
+    return (this->get_content_ref().at(i - ds3hdr_mac_to_nbs (NULL, 0, &(this->machdr))));
+}
+#endif
+
+#if CCFDEBUG
 #include <stdio.h>
 
 #ifndef REQUIRE

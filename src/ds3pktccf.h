@@ -41,6 +41,7 @@ class ds3packet_t {
 public:
 #if CCFDEBUG
     virtual void dump (void) { DS3_WRONGFUNC_RET(); } /**< dump the content of packet */
+    virtual uint8_t & at(size_t i);
 #endif
 
     ds3packet_t() : pos_next(0) {}
@@ -217,6 +218,7 @@ public:
 
 #if CCFDEBUG
     virtual void dump (void);
+    virtual uint8_t & at(size_t i);
 #endif
 
     virtual ~ds3packet_ccf_t() { std::cout << "Destroy " << __func__ << std::endl; memset (&(this->ccfhdr), 0, sizeof(this->ccfhdr)); }
@@ -229,6 +231,7 @@ public:
 private:
     ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { return ds3hdr_ccf_to_nbs (nbsbuf, szbuf, &(this->ccfhdr)); }
     ds3hdr_ccf_t ccfhdr; /**< the CCF segment header */
+    uint8_t ccfhdrbuf[8]; /**< buffer for CCF header */
 };
 
 /**

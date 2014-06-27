@@ -109,6 +109,25 @@ ds3packet_ccf_t::dump (void)
         << std::endl;
     this->dump_content ();
 }
+
+uint8_t &
+ds3packet_ccf_t::at(size_t i)
+{
+    assert ((ssize_t)sizeof (this->ccfhdrbuf) >= ds3hdr_ccf_to_nbs (NULL, 0, &(this->ccfhdr)));
+    if ((ssize_t)i < ds3hdr_ccf_to_nbs (NULL, 0, &(this->ccfhdr))) {
+        this->hdr_to_nbs (this->ccfhdrbuf, sizeof(this->ccfhdrbuf));
+        return this->ccfhdrbuf[i];
+    }
+    assert ((ssize_t)i >= ds3hdr_ccf_to_nbs (NULL, 0, &(this->ccfhdr)));
+    return (this->get_content_ref().at(i - ds3hdr_ccf_to_nbs (NULL, 0, &(this->ccfhdr))));
+}
+
+uint8_t &
+ds3packet_t::at(size_t i)
+{
+    static uint8_t t = -1;
+    DS3_WRONGFUNC_RETVAL(t);
+}
 #endif
 
 /**

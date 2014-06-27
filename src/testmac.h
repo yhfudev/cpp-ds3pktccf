@@ -45,6 +45,7 @@ class ds3packet_nbsmac_t : public ds3packet_t {
 public:
 #if CCFDEBUG
     virtual void dump (void);
+    virtual uint8_t & at(size_t i);
 #endif
     ds3packet_nbsmac_t() { memset (&(this->machdr), 0, sizeof (this->machdr)); }
     virtual ~ds3packet_nbsmac_t() { std::cout << "Destroy " << __func__ << std::endl;}
@@ -72,6 +73,7 @@ private:
 
     ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { this->get_header(); return ds3hdr_mac_to_nbs (nbsbuf, szbuf, &(this->machdr)); }
     ds3hdr_mac_t machdr; /**< the MAC packet header */
+    uint8_t machdrbuf[4]; /**< buffer for MAC header */
 };
 
 #if CCFDEBUG

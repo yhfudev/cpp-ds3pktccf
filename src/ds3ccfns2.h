@@ -41,6 +41,8 @@ private:
     size_t szpkt;
     std::vector<ds3pktbufns2_info_t> pktlist; /**< the packet list of content */
     bool insert_gpkt_idx (size_t i, size_t szcur, size_t pos_self, ds3_packet_generic_t pkt, size_t begin_peer, size_t end_peer);
+protected:
+    bool get_gpkt_info (size_t pos /* IN */, ds3_packet_generic_t &ret_pkt /* OUT */, size_t & ret_begin /* OUT */, size_t & ret_end /* OUT */); /**< get the packet info at the position pos */
 
 public:
 #if CCFDEBUG
