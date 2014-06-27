@@ -415,9 +415,7 @@ ds3_packet_buffer_gpkt_t::dump (void)
     //}
     std::cout << std::endl;
 }
-#endif
 
-#if CCFDEBUG
 void
 ds3packet_gpkt_t::dump (void)
 {
@@ -507,6 +505,27 @@ ds3_ccf_unpack_ns2_t::signify_packet (ds3_packet_buffer_t & macbuffer)
 #include <packet.h> // NS2
 #include "hdr-docsis.h"
 
+#if CCFDEBUG
+void
+ds3_packet_buffer_ns2_t::dump (void)
+{
+    assert (0); // TODO
+    std::cout << "   content: " ;// << std::endl;
+    //std::vector<uint8_t>::iterator itb = this->buffer.begin();
+    //std::vector<uint8_t>::iterator ite = this->buffer.end();
+    //for (; itb != ite; itb ++ ) {
+    //    printf (" %02X", *itb);
+    //}
+    std::cout << std::endl;
+}
+
+void
+ds3packet_ns2mac_t::dump (void)
+{
+    this->dump_content ();
+}
+#endif
+
 Packet *
 ds3_packet_buffer_ns2_t::extract_ns2pkt (size_t pos)
 {
@@ -559,11 +578,18 @@ ns2pkt_get_size (Packet *p)
 
 #include "testmac.h"
 
+#ifndef REQUIRE
+#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
+#endif
+
 /**
  * @brief the packet content class for NS2 Packet class
  */
 class ds3_packet_buffer_test_t : public ds3_packet_buffer_gpkt_t {
 public:
+#if CCFDEBUG
+    virtual void dump (void);
+#endif
     ds3packet_nbsmac_t * extract_testpkt (size_t pos); // extract a Packet at the position pos,
 
     ds3_packet_buffer_test_t() {}
@@ -579,8 +605,32 @@ inline ds3_packet_buffer_test_t::~ds3_packet_buffer_test_t() {}
 /** @brief test packet class for ds3packet_nbsmac_t */
 class ds3packet_testmac_t : public ds3packet_gpkt_t {
 public:
+#if CCFDEBUG
+    virtual void dump (void);
+#endif
     void set_testpacket (ds3packet_nbsmac_t *pkt1) { size_t sz = pkt1->size(); set_packet((ds3_packet_generic_t)pkt1, sz); }
 };
+
+#if CCFDEBUG
+void
+ds3_packet_buffer_test_t::dump (void)
+{
+    assert (0); // TODO
+    std::cout << "   content: " ;// << std::endl;
+    //std::vector<uint8_t>::iterator itb = this->buffer.begin();
+    //std::vector<uint8_t>::iterator ite = this->buffer.end();
+    //for (; itb != ite; itb ++ ) {
+    //    printf (" %02X", *itb);
+    //}
+    std::cout << std::endl;
+}
+
+void
+ds3packet_testmac_t::dump (void)
+{
+    this->dump_content ();
+}
+#endif
 
 ds3packet_nbsmac_t *
 ds3_packet_buffer_test_t::extract_testpkt (size_t pos)
@@ -611,7 +661,7 @@ ds3_packet_buffer_test_t::block_size_at (size_t pos)
     if (ret < 0) {
         return -1;
     }
-    // TODO: check the size of packet
+    // check the size of packet
     if (NULL == this->extract_testpkt(pos)) {
         assert (0);
         return -1;
@@ -628,14 +678,124 @@ ds3_packet_buffer_test_t::block_size_at (size_t pos)
 int
 test_ns2ccf (void)
 {
-    int execode = rand () % EXECODE_SIZE;
+    int execode;
+    std::vector<uint8_t> buf_stdvec;
+    ds3_packet_buffer_test_t buf_gpkt;
+    ds3_packet_buffer_nbsmac_t buf_nbs;
+
+    ds3packet_nbsmac_t * pktnew = NULL;
+    std::vector<ds3packet_nbsmac_t *> pktlist;
+
+    size_t szmaxpkt = 238;
+    uint16_t sequence = 0;
+    std::vector<uint8_t> buf_fillcontent;
+    ds3hdr_mac_t machdr;
+    uint8_t macbuf[10];
+    size_t szhdr = 0;
+    size_t i;
+    for (i = 0; i < szmaxpkt; i ++) {
+        buf_fillcontent.push_back(0x11 + i);
+    }
+
+    std::vector<uint8_t>::iterator itb;
+    std::vector<uint8_t>::iterator ite;
+    ds3_packet_buffer_nbs_t nbscnt;
+    std::vector<uint8_t> buf_tmp;
+
+    //srand(0); // srand (time(NULL));
+
+    size_t pos_self;
+    size_t pos_begin;
+    size_t pos_end;
+    // test ds3_packet_buffer_gpkt_t
+    execode = rand () % EXECODE_SIZE;
     switch (execode) {
     case EXECODE_INSERT:
+        // insert a new packet
+        //  1. insert raw packet to std::vector<uint8_t>
+        //  2. insert a new nbsmac packet to nbsmac
+        //  3. insert a new nbsmac packet to gpkt
+        //  4. compare all of the packet with std::vector<uint8_t>
+        //     make sure they are equal of contents (except the header of first packet).
+        memset (&machdr, 0, sizeof(machdr));
+        machdr.sequence = sequence; sequence ++;
+        machdr.length = rand () % (buf_fillcontent.size()) + 1;
+
+        assert (machdr.length <= buf_fillcontent.size());
+        szhdr = ds3hdr_mac_to_nbs(NULL, 0, &machdr);
+        assert (sizeof(macbuf) >= szhdr);
+        szhdr = ds3hdr_mac_to_nbs(macbuf, sizeof(macbuf), &machdr);
+
+        buf_tmp.resize(0);
+        std::copy (macbuf, macbuf + szhdr, buf_tmp.end());
+        std::copy (buf_fillcontent.begin(), buf_fillcontent.begin() + machdr.length, buf_tmp.end());
+        pos_begin = rand () % (buf_tmp.size());
+        pos_end = rand () % (buf_tmp.size() + 1);
+        assert (pos_begin < buf_tmp.size());
+        assert (pos_end <= buf_tmp.size());
+
+        /**
+         * make sure that the inserted position is not in the mac header area of the first packet
+         * since we need to handle the packets overlay (for testing ds3packet_nbsmac_t)
+         */
+        assert ((ssize_t)szhdr == ds3hdr_mac_to_nbs(NULL, 0, &machdr));
+        pos_self = rand () % (buf_stdvec.size() + 1);
+        if (buf_stdvec.size() > 0) {
+            assert (buf_stdvec.size() > szhdr);
+            pos_self = rand () % (buf_stdvec.size() - szhdr + 1) + szhdr;
+        }
+
+        std::cerr << "insert sq " << machdr.sequence
+            << " sz " << machdr.length
+            << " range (" << pos_begin << "," << pos_end << ")"
+            << " at " << pos_self
+            << std::endl;
+
+        // vector buffer
+        buf_stdvec.insert (buf_stdvec.begin() + pos_self, buf_tmp.begin() + pos_begin, buf_tmp.begin() + pos_end);
+
+        pktnew = new ds3packet_nbsmac_t();
+        itb = buf_fillcontent.begin();
+        ite = buf_fillcontent.begin() + machdr.length;
+        nbscnt.append(itb, ite);
+        pktnew->set_content (&nbscnt);
+        nbscnt.resize(0);
+        pktnew->sethdr_sequence(machdr.sequence);
+        pktlist.push_back(pktnew); // backup the pointer
+
+        // ds3packet
+        //ssize_t ds3_packet_buffer_t::insert (size_t pos_self, ds3_packet_buffer_t *peer, size_t begin_peer, size_t end_peer);
+        //buf_nbs.insert (pos_self, peer1, begin1, end1);
+
+        // generic packet
+        //bool ds3_packet_buffer_gpkt_t::insert_gpkt (size_t pos_self, ds3_packet_generic_t peer_pkt, size_t begin_peer, size_t end_peer);
+        assert (pos_begin < pktnew->size());
+        assert (pos_end <= pktnew->size());
+        buf_gpkt.insert_gpkt(pos_self, pktnew, pos_begin, pos_end);
+
+        // compare
+
+        break;
+
     case EXECODE_COPY:
+        // ssize_t ds3_packet_buffer_t::copy (size_t pos_self, ds3_packet_buffer_t *peer, size_t begin_peer, size_t end_peer);
+        break;
+
     case EXECODE_ERASE:
+        // bool ds3_packet_buffer_gpkt_t::erase (size_t begin_self, size_t end_self);
         break;
     }
     // test extract
+    // ds3_packet_generic_t ds3_packet_buffer_gpkt_t::extract_gpkt (size_t pos);
+
+    // test gpkt
+    ds3packet_testmac_t pkt_gpkt;
+
+    // clean
+    std::vector<ds3packet_nbsmac_t *>::iterator itpkt;
+    for (itpkt = pktlist.begin(); itpkt != pktlist.end(); itpkt ++) {
+        delete (*itpkt);
+    }
     return -1;
 }
 #endif

@@ -477,7 +477,7 @@ ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, s
 #include <stdio.h>
 
 #ifndef REQUIRE
-#define REQUIRE assert
+#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
 #endif
 
 int

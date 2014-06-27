@@ -166,7 +166,10 @@ size_t ns2pkt_get_size (Packet *p);
  * @brief the packet content class for NS2 Packet class
  */
 class ds3_packet_buffer_ns2_t : public ds3_packet_buffer_gpkt_t {
-public:
+public::
+#if CCFDEBUG
+    virtual void dump (void);
+#endif
     Packet * extract_ns2pkt (size_t pos); // extract a Packet at the position pos,
 
     ds3_packet_buffer_ns2_t() {}
@@ -182,6 +185,9 @@ inline ds3_packet_buffer_ns2_t::~ds3_packet_buffer_ns2_t() {}
 /** @brief packet class for NS2 Packet */
 class ds3packet_ns2mac_t : public ds3packet_gpkt_t {
 public:
+#if CCFDEBUG
+    virtual void dump (void);
+#endif
     void set_ns2packet (Packet *pkt1) { size_t sz = ns2pkt_get_size(pkt1); set_packet((ds3_packet_generic_t)pkt1, sz); }
 };
 

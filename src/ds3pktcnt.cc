@@ -286,7 +286,7 @@ ds3_packet_buffer_nbs_t::dump (void)
 #if CCFDEBUG
 
 #ifndef REQUIRE
-#define REQUIRE assert
+#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
 #endif
 
 int

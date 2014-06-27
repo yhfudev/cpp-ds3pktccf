@@ -146,7 +146,7 @@ clean_all_packets (void)
 }
 
 #ifndef REQUIRE
-#define REQUIRE assert
+#define REQUIRE(a) if (! (a)) { assert(a); return -1; }
 #endif
 
 //#define NUM_PKT 5
@@ -209,7 +209,7 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
 
     size_t max_pkt = 0;
     std::cerr << "The configured size:" << std::endl;
-    std::cerr << "size_t size_pkt[] = {" << std::endl << "  ";
+    std::cerr << "size_t packetsize[] = {" << std::endl << "  ";
     for (i = 0; i < size_pkt.size(); i ++) {
         if (max_pkt < size_pkt[i]) { max_pkt = size_pkt[i]; }
         std::cerr << size_pkt[i] << ", ";
@@ -244,7 +244,7 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
 
     next_gt_time = 1.0;
     for (i = 0; i < size_grant.size(); i ++) {
-        assert (size_grant.at(i) >= (size_t)    ds3hdr_ccf_to_nbs (NULL, 0, NULL));
+        assert (size_grant.at(i) >= (size_t) ds3hdr_ccf_to_nbs (NULL, 0, NULL));
         gt.set_size(size_grant.at(i)); // CCF header(8) + data(7)
         gt.set_channel_id(1);
         gt.set_time(next_gt_time);
@@ -283,7 +283,6 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
             pkt->dump();
         }
     }
-    //REQUIRE ( 3 == get_channel_packet_length() );
     size_t nlast = get_channel_packet_length();
 
     // randomize the packets in the channel
@@ -329,7 +328,7 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
     }
 
     REQUIRE ( nlast + nump == (size_t)get_channel_packet_length() );
-    assert (g_pkt_in_recycle.size() == nump);
+    REQUIRE ( g_pkt_in_recycle.size() == nump );
 
     clean_all_packets ();
     return ret;
@@ -342,7 +341,7 @@ int
 test_pack_fix1 (void)
 {
 
-    size_t size_pkt[] = {
+    size_t packetsize[] = {
         44, 47, 58, 56, 54, 56, 47, 13, 10, 2, 3, 8, 51, 20, 24, 47,
         1, 7, 53, 17, 12, 9, 28, 10, 3, 51, 3, 44, 8, 56
     };
@@ -351,13 +350,13 @@ test_pack_fix1 (void)
         37, 110, 230, 266, 277, 275
     };
 
-    return test_pack_gp(grantsize, NUMARRAY(grantsize), NULL, NUMARRAY(size_pkt));
+    return test_pack_gp(grantsize, NUMARRAY(grantsize), packetsize, NUMARRAY(packetsize));
 }
 
 int
 test_pack_fix2 (void)
 {
-    size_t size_pkt[] = {
+    size_t packetsize[] = {
         63, 100, 92, 67, 95, 5, 37, 43, 52, 145, 70, 117, 4, 6, 5, 24,
         120, 25, 17, 1, 37, 142, 122, 37, 108, 35, 69, 99, 115, 125, 27, 42,
         73, 134, 108, 31, 3, 144, 73, 54, 1, 6, 18, 4, 12, 38, 28, 147,
@@ -369,7 +368,21 @@ test_pack_fix2 (void)
         322, 251, 110, 252, 332, 147, 108, 236, 348, 245, 233, 99, 111, 309, 181, 242,
     };
 
-    return test_pack_gp(grantsize, NUMARRAY(grantsize), NULL, NUMARRAY(size_pkt));
+    return test_pack_gp(grantsize, NUMARRAY(grantsize), packetsize, NUMARRAY(packetsize));
+}
+
+int
+test_pack_fix3 (void)
+{
+    size_t packetsize[] = {
+      25, 18, 41, 32, 15, 2, 9, 45, 49, 39, 54, 25, 23, 32, 24, 25,
+      55, 20, 14, 17, 7, 53, 17, 9, 16, 22, 23, 20,
+    };
+    size_t grantsize[] = {
+      28, 107, 140, 120, 80, 97, 96, 79, 126, 116,
+    };
+
+    return test_pack_gp(grantsize, NUMARRAY(grantsize), packetsize, NUMARRAY(packetsize));
 }
 
 int
@@ -387,11 +400,14 @@ test_pack (void)
 {
     REQUIRE (0 == test_pack_fix1());
     REQUIRE (0 == test_pack_fix2());
+    REQUIRE (0 == test_pack_fix3());
     REQUIRE (0 == test_pack_random());
+#if 1
     for (int i = 0; i < 10; i ++) {
-        test_pack_random();
+        REQUIRE (0 == test_pack_random());
     }
-    return test_pack_random();
+#endif // 0
+    return 0;
 }
 
 /*****************************************************************************/

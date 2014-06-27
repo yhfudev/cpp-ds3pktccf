@@ -169,6 +169,7 @@ public:
      * @return the size of data copied on success; < 0 on error
      *
      * insert content from peer.
+     * Note: (end_peer - begin_peer) == size of the content to be moved.
      */
     virtual ssize_t insert (size_t pos_self, ds3_packet_buffer_t *peer, size_t begin_peer, size_t end_peer);
 
@@ -183,6 +184,7 @@ public:
      * @return the size of data copied on success; < 0 on error
      *
      * copy content from peer.
+     * Note: (end_peer - begin_peer) == size of the content to be moved.
      */
     virtual ssize_t copy (size_t pos_self, ds3_packet_buffer_t *peer, size_t begin_peer, size_t end_peer);
 
@@ -190,6 +192,7 @@ public:
      * @brief convert the packet to network byte sequence and save it to nbsbuf, including the packet header
      * @param nbsbuf : the buffer to be filled, in network byte sequence
      * @param szbuf : the size requested to be filled
+     *
      * @return the size of data copied to buffer, >0 on success, < 0 on error
      */
     virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf)
@@ -204,6 +207,7 @@ public:
      * @brief read the buffer in network byte sequence and save it to structure, including the packet header
      * @param nbsbuf : the buffer to be read, in network byte sequence
      * @param szbuf : the size of the buffer
+     *
      * @return the size of data processed, >0 on success, < 0 on error
      */
     virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf)
