@@ -239,7 +239,7 @@ ds3packet_nbsmac_t::from_nbs (ds3_packet_buffer_t *peer, size_t pos_peer)
 
 //bool operator < (const ds3packet_nbsmac_t & lhs, const ds3packet_nbsmac_t & rhs);
 bool
-ds3packet_nbsmac_t::operator == (const ds3packet_nbsmac_t & rhs)
+ds3packet_nbsmac_t::operator == (const ds3packet_nbsmac_t & rhs) const
 {
     if (this->machdr.length != rhs.machdr.length) {
 #if DEBUG
@@ -376,9 +376,11 @@ ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, s
 #endif
 #define ds3_real_type ds3_packet_buffer_nbsmac_t
     ds3_real_type *peer = NULL;
+    bool flg_peer_is_new = false;
     if (NULL == (arg_peer)) {
         /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */
         (arg_peer) = peer = new ds3_real_type ();
+        flg_peer_is_new = true;
     } else {
         peer = dynamic_cast<ds3_real_type *>(arg_peer);
         if (NULL == peer) {
@@ -404,6 +406,7 @@ ds3packet_nbsmac_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, s
         return NULL;
     }
     if ((ssize_t)pos_peer > peer->size()) {
+        if (flg_peer_is_new) { free (peer); }
         return NULL;
     }
     if (begin_self >= this->size()) {

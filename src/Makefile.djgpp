@@ -6,7 +6,7 @@
 
 EXECUTABLE := testccf
 #LIBS := alleg
-CFLAGS := -g -Wall -DTESTCCF=1 -Icache-git/include/
+CFLAGS := -g -Wall -O0 -fpermissive -DTESTCCF=1 -DCCFDEBUG=1 -Icache-git/include/
 CXXFLAGS := $(CFLAGS)
 
 RM-F := rm -f

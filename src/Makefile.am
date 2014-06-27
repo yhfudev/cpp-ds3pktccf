@@ -7,6 +7,7 @@ unittest_SOURCES= \
     ds3pktccf.cc \
     testmac.cc \
     testccf.cc \
+    ds3ccfns2.cc \
     unittest.cc \
     $(NULL)
 

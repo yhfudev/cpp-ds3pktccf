@@ -8,6 +8,7 @@
  */
 
 #include "testccf.h"
+#include "ds3ccfns2.h"
 
 // https://github.com/philsquared/Catch.git
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
@@ -21,6 +22,8 @@ TEST_CASE( "Test ccfpack the DOCSIS CCF module", "[ccfpack]" ) {
     REQUIRE (0 == test_ccfhdr());
     REQUIRE (0 == test_pktcnt());
     REQUIRE (0 == test_pack());
+    REQUIRE (0 == test_ns2ccf());
+
 #else
     ds3hdr_ccf_t ccfhdr, ccfhdr2, *ph;
     uint8_t buffer[16];

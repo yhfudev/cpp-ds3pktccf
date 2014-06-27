@@ -95,6 +95,13 @@ public:
         }
 #endif
 
+    virtual ~ds3_packet_buffer_t()
+        {
+            if (this->contents_buffer) {
+                delete this->contents_buffer;
+            }
+        }
+
     ds3_packet_buffer_t() : contents_buffer(NULL) {}
     virtual ds3_packet_buffer_t * create(void)
         {
@@ -114,19 +121,23 @@ public:
 
     size_t begin() { return 0; }
     size_t end() { return this->size(); }
-    virtual int resize(size_t sznew)
+
+    virtual int resize(size_t sznew) /**< resize the content, return 0 on success, < 0 on error */
         {
             if (this->contents_buffer) {
                 return this->contents_buffer->resize(sznew);
             }
             //DS3_WRONGFUNC_RETVAL(-1);
+            if (sznew != 0) {
+                return -1;
+            }
             return 0;
         }
     virtual uint8_t & at(size_t i);
     uint8_t & operator [](size_t i) { return at(i); }
 
     /** @brief the total size of this content */
-    virtual ssize_t size(void)
+    virtual ssize_t size(void) const
         {
             if (this->contents_buffer) {
                 return this->contents_buffer->size();
@@ -206,7 +217,7 @@ public:
             DS3_WRONGFUNC_RETVAL(-1);
         }
 
-     /** @brief get the packet content, only for drived class */
+     /** @brief get the packet content, only for derived class */
     virtual ds3_packet_buffer_t * get_buffer (void) { return this->contents_buffer; }
 
 protected:
@@ -321,7 +332,8 @@ ds3_packet_buffer_t::at(size_t i)
   public: \
     virtual ds3_packet_buffer_t * create(void) { return new ds3_real_type(); } \
     virtual ds3_packet_buffer_t * create(ds3_packet_buffer_t * peer, size_t begin, size_t end) { return new ds3_real_type(peer, begin, end); } \
-    ds3_real_type(ds3_packet_buffer_t *peer, size_t begin, size_t end)
+    ds3_real_type(ds3_packet_buffer_t *peer, size_t begin, size_t end); \
+    virtual ~ds3_real_type()
 
 /** declare the common memeber functions: size(), block_size_at(), copy_to(), insert_to() etc. */
 #define DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS(ds3_real_type) \
@@ -333,7 +345,7 @@ ds3_packet_buffer_t::at(size_t i)
         DS3_PKTCNT_IMPLEMENT_CHILD_INSERT(ds3_real_type, pos_self, arg_peer, begin_peer, end_peer); \
     } \
     virtual int resize(size_t sznew); \
-    virtual ssize_t size(void); \
+    virtual ssize_t size(void) const; \
     virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf); \
     virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf); \
     virtual ds3_packet_buffer_t * get_buffer (void) { /* this function only valid for base class! let it fail here. */ DS3_WRONGFUNC_RETVAL(NULL); } \
@@ -363,6 +375,8 @@ public:
     //virtual ssize_t block_size_at (size_t pos); // this class may be used as a parent pointer to its children, so we may call child's block_size_at()
     DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS(ds3_packet_buffer_nbs_t);
 };
+
+inline ds3_packet_buffer_nbs_t::~ds3_packet_buffer_nbs_t() {}
 
 inline int ds3_packet_buffer_nbs_t::resize(size_t sznew) { this->buffer.resize(sznew); return 0; }
 inline uint8_t & ds3_packet_buffer_nbs_t::at(size_t i) { return this->buffer[i]; }

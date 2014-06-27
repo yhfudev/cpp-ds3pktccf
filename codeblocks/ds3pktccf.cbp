@@ -35,6 +35,8 @@
 			<Add option="-DCCFDEBUG=1" />
 			<Add directory="../../cache-git/include" />
 		</Compiler>
+		<Unit filename="../src/ds3ccfns2.cc" />
+		<Unit filename="../src/ds3ccfns2.h" />
 		<Unit filename="../src/ds3pktccf.cc" />
 		<Unit filename="../src/ds3pktccf.h" />
 		<Unit filename="../src/ds3pktcnt.cc" />

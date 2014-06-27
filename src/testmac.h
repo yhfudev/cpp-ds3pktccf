@@ -38,34 +38,38 @@ public:
 inline ds3_packet_buffer_nbsmac_t::ds3_packet_buffer_nbsmac_t(ds3_packet_buffer_t *peer, size_t begin, size_t end)
     : ds3_packet_buffer_nbs_t (peer, begin, end) { }
 
+inline ds3_packet_buffer_nbsmac_t::~ds3_packet_buffer_nbsmac_t() {}
+
 /** @brief packet class for testing fake mac */
 class ds3packet_nbsmac_t : public ds3packet_t {
 public:
 #if CCFDEBUG
     virtual void dump (void);
 #endif
+    ds3packet_nbsmac_t() { memset (&(this->machdr), 0, sizeof (this->machdr)); }
     virtual ~ds3packet_nbsmac_t() { std::cout << "Destroy " << __func__ << std::endl;}
 
     virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
     virtual ssize_t from_nbs (uint8_t *nbsbuf, size_t szbuf);
     virtual ssize_t from_nbs (ds3_packet_buffer_t *peer, size_t pos_peer);
 
-    //virtual int set_content (uint8_t *nbsbuf, size_t szbuf) { if (ds3packet_t::set_content(nbsbuf, szbuf) >= 0) { machdr.length = szbuf; return 0; } return -1; }
-    //virtual int set_content (std::vector<uint8_t> & newbuf) { if (ds3packet_t::set_content(newbuf) >= 0) { machdr.length = newbuf.size(); return 0; } return -1; }
-    //virtual int set_content (std::vector<uint8_t>::iterator & begin1, std::vector<uint8_t>::iterator & end1)
-    //     { if (ds3packet_t::set_content(begin1, end1) >= 0) { machdr.length = (end1 - begin1); return 0; } return -1; }
+    /* OUT */
+    virtual ds3_packet_buffer_t * insert_to (size_t pos_peer, ds3_packet_buffer_t *peer, size_t begin_self, size_t end_self);
+
+    size_t gethdr_sequence () { return machdr.sequence; }
+
+    /* IN */
+    void sethdr_sequence (size_t seq) { machdr.sequence = seq; }
     virtual int set_content (ds3_packet_buffer_t *peer)
         { if (0 > ds3packet_t::set_content(peer)) { return -1; } this->get_header(); return 0; }
 
-    virtual ds3_packet_buffer_t * insert_to (size_t pos_peer, ds3_packet_buffer_t *peer, size_t begin_self, size_t end_self);
-
-    int set_header (ds3hdr_mac_t * mhdr) { if (NULL == mhdr) {return -1;} memmove (&(this->machdr), mhdr, sizeof (*mhdr)); return 0; } /**< set the NS2 packet header */
-    ds3hdr_mac_t & get_header (void) { this->machdr.length = this->get_content_ref().size(); return machdr; } /**< get a reference of the MAC header */
-
-    bool operator == (const ds3packet_nbsmac_t & rhs); /**< check if two ns2 packets are identical */
+    bool operator == (const ds3packet_nbsmac_t & rhs) const ; /**< check if two ns2 packets are identical */
     bool operator != (const ds3packet_nbsmac_t & rhs) { return ! (*this == rhs); } /**< check if two ns2 packets are not identical */
 
 private:
+    int set_header (ds3hdr_mac_t * mhdr) { if (NULL == mhdr) {return -1;} memmove (&(this->machdr), mhdr, sizeof (*mhdr)); return 0; } /**< set the NS2 packet header */
+    ds3hdr_mac_t & get_header (void) { this->machdr.length = this->get_content_ref().size(); return machdr; } /**< get a reference of the MAC header */
+
     ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { this->get_header(); return ds3hdr_mac_to_nbs (nbsbuf, szbuf, &(this->machdr)); }
     ds3hdr_mac_t machdr; /**< the MAC packet header */
 };

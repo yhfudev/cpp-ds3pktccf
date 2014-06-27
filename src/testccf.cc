@@ -208,25 +208,25 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
     }
 
     size_t max_pkt = 0;
-    std::cout << "The configured size:" << std::endl;
-    std::cout << "size_t size_pkt[] = {" << std::endl << "  ";
+    std::cerr << "The configured size:" << std::endl;
+    std::cerr << "size_t size_pkt[] = {" << std::endl << "  ";
     for (i = 0; i < size_pkt.size(); i ++) {
         if (max_pkt < size_pkt[i]) { max_pkt = size_pkt[i]; }
-        std::cout << size_pkt[i] << ", ";
+        std::cerr << size_pkt[i] << ", ";
         if ((i + 1) % 16 == 0) {
-            std::cout << std::endl << "  ";
+            std::cerr << std::endl << "  ";
         }
     }
-    std::cout << std::endl << "};" << std::endl;
+    std::cerr << std::endl << "};" << std::endl;
 
-    std::cout << "size_t grantsize[] = {" << std::endl << "  ";
+    std::cerr << "size_t grantsize[] = {" << std::endl << "  ";
     for (i = 0; i < size_grant.size(); i ++) {
-        std::cout << size_grant[i] << ", ";
+        std::cerr << size_grant[i] << ", ";
         if ((i + 1) % 16 == 0) {
-            std::cout << std::endl << "  ";
+            std::cerr << std::endl << "  ";
         }
     }
-    std::cout << std::endl << "};" << std::endl;
+    std::cerr << std::endl << "};" << std::endl;
 
     std::vector<uint8_t> pktcontent;
     //memset (pktcontent, 0xC0, sizeof(pktcontent) - 1);
@@ -267,7 +267,7 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
         nbscnt.append(itb, ite);
         pktns2->set_content (&nbscnt);
 
-        pktns2->get_header().sequence = i;
+        pktns2->sethdr_sequence(i);
         pak.process_packet(pktns2);
         //std::cout << "channel packet # = " << get_channel_packet_length() << std::endl;
         nbscnt.resize(0);
@@ -302,7 +302,7 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
     next_gt_time = 1.0;
     my_set_time (next_gt_time);
 
-    // ``transfer the segments
+    // transfer the segments
     // since we append the new assemblied packet to the same global vector,
     // so we need to get the original length of the queue.
     j = 0;
@@ -318,11 +318,12 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
         // compare the packet
         pktns1 = dynamic_cast<ds3packet_nbsmac_t *>(get_channel_packet(nlast + i));
         REQUIRE (NULL != pktns1);
-        assert (pktns1->get_header().sequence < nump);
-        pktns2 = dynamic_cast<ds3packet_nbsmac_t *>(g_pkt_in_recycle[pktns1->get_header().sequence]);
+        assert (pktns2->gethdr_sequence() < nump);
+
+        pktns2 = dynamic_cast<ds3packet_nbsmac_t *>(g_pkt_in_recycle[pktns1->gethdr_sequence()]);
         REQUIRE (NULL != pktns2);
         if (*pktns1 != *pktns2) {
-            std::cout << "packet(" << i << ") not equal! sequence=" << pktns1->get_header().sequence << std::endl;
+            std::cout << "packet(" << i << ") not equal! sequence=" << pktns1->gethdr_sequence() << std::endl;
             ret = -1;
         }
     }
@@ -387,6 +388,9 @@ test_pack (void)
     REQUIRE (0 == test_pack_fix1());
     REQUIRE (0 == test_pack_fix2());
     REQUIRE (0 == test_pack_random());
+    for (int i = 0; i < 10; i ++) {
+        test_pack_random();
+    }
     return test_pack_random();
 }
 
@@ -445,6 +449,8 @@ test_pktclass (void)
 }
 
 #if TESTCCF
+#include "ds3ccfns2.h"
+
 int
 main1(void)
 {
@@ -453,6 +459,7 @@ main1(void)
     test_ccfhdr();
     test_pktcnt ();
     test_pack();
+    test_ns2ccf ();
     return 0;
 }
 #endif

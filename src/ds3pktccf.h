@@ -162,9 +162,11 @@ private:
 /* check the arguments for ds3packet_t::insert_to() */
 #define DS3_DYNCST_CHKRET_DS3PKT_BUFFER(ds3_real_type, arg_peer) \
     ds3_real_type *peer = NULL; \
+    bool flg_peer_is_new = false; \
     if (NULL == (arg_peer)) { \
         /* create a new buf, and copy itself from [begin_self, end_self], return the new buf */ \
         (arg_peer) = peer = new ds3_real_type (); \
+        flg_peer_is_new = true; \
     } else { \
         peer = dynamic_cast<ds3_real_type *>(arg_peer); \
         if (NULL == peer) { \
@@ -189,6 +191,7 @@ private:
         return NULL; \
     } \
     if ((ssize_t)pos_peer > peer->size()) { \
+        if (flg_peer_is_new) { free (peer); } \
         return NULL; \
     } \
     if (begin_self >= this->size()) { \

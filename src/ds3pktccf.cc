@@ -363,11 +363,7 @@ std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ") 
 #else // 2
                 if (it1st != itleft) {
                     if ((*it1st)->get_header().offmac > 0) {
-#if DEBUG
-                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size());
-#else
-                        (*it1st)->set_procpos((*it1st)->size());
-#endif
+                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos((*it1st)->size());
                         it1st ++;
                     }
                     if (it1st != itleft) {
@@ -447,11 +443,7 @@ std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
                         // this is the start of segment,
                         // since it have other content at the begin,
                         // so we just set the last position to max position:
-#if DEBUG
-                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size());
-#else
-                        (*it1st)->set_procpos((*it1st)->size());
-#endif
+                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos((*it1st)->size());
                         it1st ++;
                     }
                     if (it1st != itleft) {

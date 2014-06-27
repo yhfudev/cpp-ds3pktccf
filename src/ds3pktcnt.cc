@@ -165,7 +165,7 @@ ds3_packet_buffer_t::insert (size_t pos_self, ds3_packet_buffer_t *peer, size_t 
     return (end_peer - begin_peer);
 }
 
-ssize_t ds3_packet_buffer_nbs_t::size(void) { return this->buffer.size(); }
+ssize_t ds3_packet_buffer_nbs_t::size(void) const { return this->buffer.size(); }
 
 ssize_t
 ds3_packet_buffer_nbs_t::append (std::vector<uint8_t>::iterator & begin1, std::vector<uint8_t>::iterator & end1)
@@ -249,6 +249,7 @@ ds3_packet_buffer_nbs_t::insert_to (size_t pos_peer, ds3_packet_buffer_t *arg_pe
         end_self = this->size();
     }
 #endif
+    assert (NULL != peer);
     // add the content between [begin_self, end_self) to peer
     // peer has to be the same typs as this
     peer->buffer.insert(peer->buffer.begin() + pos_peer, buffer.begin() + begin_self, buffer.begin() + end_self);
@@ -259,6 +260,7 @@ ds3_packet_buffer_t *
 ds3_packet_buffer_nbs_t::copy_to (size_t pos_peer, ds3_packet_buffer_t *arg_peer, size_t begin_self, size_t end_self)
 {
     DS3_DYNCST_CHKRET_CONTENT_POINTER(ds3_packet_buffer_nbs_t, arg_peer);
+    assert (NULL != peer);
     // add the content between [begin_self, end_self) to peer
     // peer has to be the same typs as this
     peer->buffer.insert(peer->buffer.begin() + pos_peer, buffer.begin() + begin_self, buffer.begin() + end_self);
