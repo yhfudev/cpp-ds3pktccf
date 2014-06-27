@@ -17,11 +17,11 @@
 /*****************************************************************************/
 TEST_CASE( "Test ccfpack the DOCSIS CCF module", "[ccfpack]" ) {
 #if 1
-    /*REQUIRE (0 == test_pktclass()); //exit(0);
+    REQUIRE (0 == test_pktclass()); //exit(0);
     REQUIRE (0 == test_machdr());
     REQUIRE (0 == test_ccfhdr());
     REQUIRE (0 == test_pktcnt());
-    REQUIRE (0 == test_pack());*/
+    REQUIRE (0 == test_pack());
     REQUIRE (0 == test_ns2ccf());
 
 #else

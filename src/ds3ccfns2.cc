@@ -1101,7 +1101,7 @@ test_ns2ccf_fix1 (void)
 {
     ds3_test_exec_info_t testcase1[] = {
         { EXECODE_INSERT_FROM, 0 /* sq */,  1 /* maxsz */, 0 /* range_begin */, 5 /* range_end */, 0 /* pos_self */, },
-        { EXECODE_INSERT_FROM, 1 /* sq */,  MAX_SIZE_PKT /* maxsz */, 5 /* range_begin */, 7 /* range_end */, 1 /* pos_self */, },
+        { EXECODE_INSERT_FROM, 1 /* sq */,  MAX_SIZE_PKT /* maxsz */, 5 /* range_begin */, 7 /* range_end */, 4 /* pos_self */, },
     };
 
     return test_ns2ccf_gp (testcase1, NUMARRAY(testcase1));
@@ -1242,11 +1242,11 @@ test_ns2ccf_random (void)
 int
 test_ns2ccf (void)
 {
-    /*REQUIRE (0 == test_ns2ccf_fix1());
+    REQUIRE (0 == test_ns2ccf_fix1());
     REQUIRE (0 == test_ns2ccf_fix2());
-    REQUIRE (0 == test_ns2ccf_fix3());*/
-    //REQUIRE (0 == test_ns2ccf_fix4());
-    //REQUIRE (0 == test_ns2ccf_fix2());
+    REQUIRE (0 == test_ns2ccf_fix3());
+    REQUIRE (0 == test_ns2ccf_fix4());
+    REQUIRE (0 == test_ns2ccf_fix5());
     REQUIRE (0 == test_ns2ccf_random());
     return 0;
 }
