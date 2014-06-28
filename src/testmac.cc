@@ -212,7 +212,8 @@ ds3packet_nbsmac_t::from_nbs (ds3_packet_buffer_t *peer, size_t pos_peer)
     peer->append_to (buffer1);
 #else
     buffer1.resize(szret);
-    for (int i; i < szret; i ++) {
+    ssize_t i;
+    for (i = 0; i < szret; i ++) {
         buffer1[i] = peer->at(pos_peer + i);
     }
 #endif // 1
