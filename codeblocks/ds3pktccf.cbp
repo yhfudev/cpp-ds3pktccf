@@ -38,10 +38,12 @@
 		</Compiler>
 		<Unit filename="../src/ds3ccfns2.cc" />
 		<Unit filename="../src/ds3ccfns2.h" />
+		<Unit filename="../src/ds3pktbuf.cc" />
+		<Unit filename="../src/ds3pktbuf.h" />
 		<Unit filename="../src/ds3pktccf.cc" />
 		<Unit filename="../src/ds3pktccf.h" />
-		<Unit filename="../src/ds3pktcnt.cc" />
-		<Unit filename="../src/ds3pktcnt.h" />
+		<Unit filename="../src/ds3pktgnc.cc" />
+		<Unit filename="../src/ds3pktgnc.h" />
 		<Unit filename="../src/testccf.cc" />
 		<Unit filename="../src/testccf.h" />
 		<Unit filename="../src/testmac.cc" />

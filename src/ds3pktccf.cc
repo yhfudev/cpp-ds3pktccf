@@ -251,6 +251,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         //std::vector<uint8_t> & cntbufref = (*itleft)->get_content_ref();
         ds3_packet_buffer_t & cntbufref = (*itleft)->get_content_ref();
 
+		// check if the CCF segment was complete processed.
         if ((ssize_t)off >= cntbufref.size()) {
             // this segment is processed from the start of offmac to the end
             assert ((ssize_t)off == (*itleft)->get_content_ref().size());
@@ -273,7 +274,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                 }
                 continue;
             }
-        } /* else */
+        }
 {
         // check if we can get MAC header
         szmhdr = -1; /* the size of next sub-block, (header+content) */
@@ -282,7 +283,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         flg_data_right = false;  /* use the right data of procpos to fill hdrbuf */
 
         if (hdrbuf.size() <= 0) {
-            // this is the first segment of the packet
+            // this is the first segment of a MAC packet
 
             // make sure this segment has MAC header!!
             if ((*itleft)->get_header().pfi == 0) {
@@ -364,7 +365,7 @@ std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ") 
                         // no enough header bytes
                         // wait for next one?
                     }
-                    szmhdr = 0; // reset the header so that it continue
+                    szmhdr = 0; // reset the header so that it continues
                     // no enough content bytes
                     // wait for next one?
                     flg_continue = true;

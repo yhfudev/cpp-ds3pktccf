@@ -1,6 +1,6 @@
 /**
- * @file    ds3pktcnt.cc
- * @brief   ds3 packet content
+ * @file    ds3pktbuf.cc
+ * @brief   ds3 packet content buffer
  * @author  Yunhui Fu (yhfudev@gmail.com)
  * @version 1.0
  * @date    2014-06-20
@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <netinet/in.h> // htons()
 
-#include "ds3pktcnt.h"
+#include "ds3pktbuf.h"
 
 /**
  * @brief convert struct to network byte sequence

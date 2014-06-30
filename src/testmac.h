@@ -9,7 +9,7 @@
 #ifndef _TESTMAC_H
 #define _TESTMAC_H
 
-#include "ds3pktcnt.h"
+#include "ds3pktbuf.h"
 #include "ds3pktccf.h"
 
 #if 1
@@ -73,7 +73,9 @@ private:
 
     ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { this->get_header(); return ds3hdr_mac_to_nbs (nbsbuf, szbuf, &(this->machdr)); }
     ds3hdr_mac_t machdr; /**< the MAC packet header */
+#if CCFDEBUG
     uint8_t machdrbuf[4]; /**< buffer for MAC header */
+#endif
 };
 
 #if CCFDEBUG

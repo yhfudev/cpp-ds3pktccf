@@ -3,8 +3,9 @@ CC=g++
 bin_PROGRAMS=unittest
 
 unittest_SOURCES= \
-    ds3pktcnt.cc \
+    ds3pktbuf.cc \
     ds3pktccf.cc \
+    ds3pktgnc.cc \
     testmac.cc \
     testccf.cc \
     ds3ccfns2.cc \

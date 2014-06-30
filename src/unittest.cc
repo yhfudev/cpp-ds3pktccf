@@ -1,5 +1,5 @@
 /**
- * @file    unittest.cc
+ * @-------file    unittest.cc
  * @brief   unittest for DOCSIS CCF
  * @author  Yunhui Fu (yhfudev@gmail.com)
  * @version 1.0
@@ -22,7 +22,7 @@ TEST_CASE( "Test ccfpack the DOCSIS CCF module", "[ccfpack]" ) {
     REQUIRE (0 == test_ccfhdr());
     REQUIRE (0 == test_pktcnt());
     REQUIRE (0 == test_pack());
-    REQUIRE (0 == test_ns2ccf());
+    REQUIRE (0 == test_pktgnc());
 
 #else
     ds3hdr_ccf_t ccfhdr, ccfhdr2, *ph;

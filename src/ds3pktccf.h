@@ -17,7 +17,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "ds3pktcnt.h"
+#include "ds3pktbuf.h"
 
 /**
  * @brief The event type for state machine
@@ -231,7 +231,9 @@ public:
 private:
     ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { return ds3hdr_ccf_to_nbs (nbsbuf, szbuf, &(this->ccfhdr)); }
     ds3hdr_ccf_t ccfhdr; /**< the CCF segment header */
+#if CCFDEBUG
     uint8_t ccfhdrbuf[8]; /**< buffer for CCF header */
+#endif
 };
 
 /**

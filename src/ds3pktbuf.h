@@ -1,6 +1,6 @@
 /**
- * @file    ds3pktcnt.h
- * @brief   ds3 packet content
+ * @file    ds3pktbuf.h
+ * @brief   ds3 packet content buffer
  * @author  Yunhui Fu (yhfudev@gmail.com)
  * @version 1.0
  * @date    2014-06-20
