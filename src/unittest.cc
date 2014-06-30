@@ -16,6 +16,7 @@
 
 /*****************************************************************************/
 TEST_CASE( "Test ccfpack the DOCSIS CCF module", "[ccfpack]" ) {
+    srand(time(NULL));
 #if 1
     REQUIRE (0 == test_pktclass());
     REQUIRE (0 == test_machdr());

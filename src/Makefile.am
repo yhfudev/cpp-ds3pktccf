@@ -24,7 +24,7 @@ unittest_CPPFLAGS= \
     $(NULL)
 
 DEFS+= \
-    -DTESTCCF=1 -DCCFDEBUG=1\
+    -DTESTCCF=1 -DCCFDEBUG=1 -DUSE_DS3NS2=0 \
     `getconf LFS_CFLAGS` \
     `getconf LFS64_CFLAGS` \
     -D_GNU_SOURCE \

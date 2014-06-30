@@ -175,7 +175,12 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             this->signify_piggyback (ccfhdr.sc, ccfhdr.request);
         }
 
-        pktin->set_procpos(0);
+        pktin->set_procpos_next(0);
+        pktin->set_procpos_prev(0);
+        if (ccfhdr.pfi == 1) {
+            pktin->set_procpos_prev(ccfhdr.offmac);
+            pktin->set_procpos_next(ccfhdr.offmac);
+        }
         std::vector<ds3packet_ccf_t *>::iterator itup = pkglst.begin();
         itup = std::upper_bound (pkglst.begin(), pkglst.end(), pktin, compare_ccfpktp);
         itins = pkglst.insert(itup, pktin);
@@ -233,8 +238,8 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
 
     ssize_t szmhdr = -1; /* the size of next sub-block, (header+content) */
     //ds3hdr_mac_t machdr; memset (&machdr, 0, sizeof (machdr));
-    bool flg_data_left = false; /* use the left data of offmac to fill hdrbuf */
-    bool flg_data_right = false;  /* use the right data of procpos to fill hdrbuf */
+    bool flg_data_left = false; /* use the left data of procpos_prev to fill hdrbuf */
+    bool flg_data_right = false;  /* use the right data of procpos_next to fill hdrbuf */
 
     // find the first segment contains the MAC header
     for (; itleft != itright; ) {
@@ -243,11 +248,13 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             // find the next unprocessed MAC header
             assert ((*itleft)->get_header().pfi == 1);
             off = (*itleft)->get_header().offmac;
-            if (off > (*itleft)->get_procpos()) {
-                (*itleft)->set_procpos(off);
+            assert (off <= (*itleft)->get_procpos_next());
+            assert (off >= (*itleft)->get_procpos_prev());
+            if (off > (*itleft)->get_procpos_next()) {
+                (*itleft)->set_procpos_next(off);
             }
         }
-        off = (*itleft)->get_procpos();
+        off = (*itleft)->get_procpos_next();
         //std::vector<uint8_t> & cntbufref = (*itleft)->get_content_ref();
         ds3_packet_buffer_t & cntbufref = (*itleft)->get_content_ref();
 
@@ -255,9 +262,9 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         if ((ssize_t)off >= cntbufref.size()) {
             // this segment is processed from the start of offmac to the end
             assert ((ssize_t)off == (*itleft)->get_content_ref().size());
-            if ((*itleft)->get_header().offmac < 1) {
+            if ((*itleft)->get_procpos_prev() < 1) {
                 // there's no data before the first MAC header, or no MAC header
-                assert ((*itleft)->get_header().offmac == 0);
+                assert ((*itleft)->get_procpos_prev() == 0);
 
                 this->recycle_packet( *itleft );
 
@@ -279,8 +286,8 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         // check if we can get MAC header
         szmhdr = -1; /* the size of next sub-block, (header+content) */
         //ds3hdr_mac_t machdr; memset (&machdr, 0, sizeof (machdr));
-        flg_data_left = false; /* use the left data of offmac to fill hdrbuf */
-        flg_data_right = false;  /* use the right data of procpos to fill hdrbuf */
+        flg_data_left = false; /* use the left data of procpos_prev to fill hdrbuf */
+        flg_data_right = false;  /* use the right data of procpos_next to fill hdrbuf */
 
         if (hdrbuf.size() <= 0) {
             // this is the first segment of a MAC packet
@@ -326,12 +333,13 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                 // this should be the last segment of the packet
                 // attach the content from the buffer to hdrbuf by size of offmac
                 assert ((*itleft)->get_header().offmac > 0);
-                hdrbuf.insert (hdrbuf.end(), &cntbufref, cntbufref.begin(), cntbufref.begin() + (*itleft)->get_header().offmac); //hdrbuf.insert (hdrbuf.end(), cntbufref.begin(), cntbufref.begin() + (*itleft)->get_header().offmac);
+                assert ((*itleft)->get_header().offmac == (*itleft)->get_procpos_prev ());
+                hdrbuf.insert (hdrbuf.end(), &cntbufref, cntbufref.begin(), cntbufref.begin() + (*itleft)->get_procpos_prev()); //hdrbuf.insert (hdrbuf.end(), cntbufref.begin(), cntbufref.begin() + (*itleft)->get_procpos_prev());
                 flg_data_left = true;
             } else {
                 // this whole segment is a part of the packet
-                assert ((*itleft)->get_procpos() == 0);
-                assert (off == (*itleft)->get_procpos());
+                assert ((*itleft)->get_procpos_next() == 0);
+                assert (off == (*itleft)->get_procpos_next ());
                 hdrbuf.insert (hdrbuf.end(), &cntbufref, cntbufref.begin() + off, cntbufref.end()); // hdrbuf.insert (hdrbuf.end(), cntbufref.begin() + off, cntbufref.end());
                 flg_data_right = true;
             }
@@ -358,7 +366,7 @@ std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ", 
 #if DEBUG
 std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ") < szmhdr=" << szmhdr
     << ", and pfi=1"
-    << ", read offset =" << (*itleft)->get_procpos()
+    << ", read offset =" << (*itleft)->get_procpos_next()
     << std::endl;
 #endif
                     } else {
@@ -382,8 +390,8 @@ std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ") 
                 DS3PKGLST_REMOVE_FAIL ();
 #else // 2
                 if (it1st != itleft) {
-                    if ((*it1st)->get_header().offmac > 0) {
-                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos((*it1st)->size());
+                    if ((*it1st)->get_procpos_prev () > 0) {
+                        (*it1st)->set_procpos_next ((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos_next((*it1st)->size());
                         it1st ++;
                     }
                     if (it1st != itleft) {
@@ -414,12 +422,13 @@ std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
 #if USE_DS3_MICRO // 3
                 DS3PKGLST_SET_PROCESSED_OFFMAC (itleft);
 #else // 3
-                /* we also set the ccfhdr.offmac to 0 to indicate that the data before the first MAC hdr is processed */
-                if ( (*itleft)->get_procpos() < (*itleft)->get_header().offmac ) {
-                    (*itleft)->set_procpos ((*itleft)->get_header().offmac);
+                /* we also set the procpos_prev to 0 to indicate that the data before the first MAC hdr is processed */
+                if ( (*itleft)->get_procpos_next() < (*itleft)->get_header().offmac ) {
+                    assert ((*itleft)->get_procpos_prev () == (*itleft)->get_header().offmac);
+                    (*itleft)->set_procpos_next ((*itleft)->get_header().offmac);
                 }
                 if (flg_data_left) {
-                    (*itleft)->get_header().offmac = 0;
+                    (*itleft)->set_procpos_prev (0);
                 }
 #endif // 3
 #endif // 2
@@ -447,7 +456,7 @@ std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
                     std::cout << "the size of data in the buffer NOT belonging to the packet: " << szbk << std::endl;
                     std::cout << "the size of data were read in current segment: " << szrest << std::endl;
                     std::cout << "set the next offset from " << off << " to " << (off + szadd) << std::endl;
-                    (*itleft)->set_procpos (off + szadd);
+                    (*itleft)->set_procpos_next (off + szadd);
                 }
 
                 hdrbuf.resize((size_t)(szmhdr));
@@ -459,11 +468,10 @@ std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
                 DS3PKGLST_REMOVE_OK ();
 #else // 2
                 if (it1st != itleft) {
-                    if ((*it1st)->get_header().offmac > 0) {
-                        // this is the start of segment,
-                        // since it have other content at the begin,
+                    if ((*it1st)->get_procpos_prev() > 0) {
+                        // this is the start of segment, and it has other content at the begining,
                         // so we just set the last position to max position:
-                        (*it1st)->set_procpos((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos((*it1st)->size());
+                        (*it1st)->set_procpos_next ((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos_next ((*it1st)->size());
                         it1st ++;
                     }
                     if (it1st != itleft) {
@@ -493,11 +501,12 @@ std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
                 DS3PKGLST_SET_PROCESSED_OFFMAC (itleft);
 #else // 3
                 /* we also set the ccfhdr.offmac to 0 to indicate that the data before the first MAC hdr is processed */
-                if ( (*itleft)->get_procpos() < (*itleft)->get_header().offmac ) {
-                    (*itleft)->set_procpos ((*itleft)->get_header().offmac);
+                if ( (*itleft)->get_procpos_next () < (*itleft)->get_header().offmac ) {
+                    assert ((*itleft)->get_procpos_prev() == (*itleft)->get_header().offmac);
+                    (*itleft)->set_procpos_next ((*itleft)->get_header().offmac);
                 }
                 if (flg_data_left) {
-                    (*itleft)->get_header().offmac = 0;
+                    (*itleft)->set_procpos_prev(0);
                 }
 #endif // 3
 #endif // 2
@@ -536,7 +545,7 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
         std::cout << "ds3_ccf_pack_t::process_packet got packet:" << std::endl;
         p->dump();
 #endif
-        p->set_procpos(0); /* reset the processed position to 0 */
+        p->reset_procpos(); /* reset the processed position to 0 */
         this->pktlst.push_back (p);
     }
     size_t numSeg = 0;
@@ -566,7 +575,7 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
             assert (pktlst.size() > 0);
             assert (NULL != pktlst[0]);
             assert (pktlst[0]->get_size() > 0);
-            if (0 == pktlst[0]->get_procpos()) {
+            if (0 == pktlst[0]->get_procpos_next()) {
                 /* It's the beginning of the packet */
                 if (0 == ccfhdr.pfi) {
                     ccfhdr.pfi = 1;
@@ -574,8 +583,8 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
                     ccfhdr.offmac = (szCur - ds3hdr_ccf_to_nbs(NULL, 0, NULL));
                 }
             }
-            assert (pktlst[0]->get_size() > pktlst[0]->get_procpos());
-            szNext = pktlst[0]->get_size() - pktlst[0]->get_procpos();
+            assert (pktlst[0]->get_size() > pktlst[0]->get_procpos_next());
+            szNext = pktlst[0]->get_size() - pktlst[0]->get_procpos_next();
             if (szCur + szNext > szMax) {
                 szNext = szMax - szCur;
             }
@@ -584,7 +593,7 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
             //ssize_t ret1 = pktlst[0]->get_pkt_bytes (pktlst[0]->get_procpos(), buffer, szNext);
             //assert ((size_t)ret1 == szNext);
             size_t szorig1 = buffer.size();
-            ds3_packet_buffer_t * retbuf = pktlst[0]->insert_to (buffer.size(), &buffer, pktlst[0]->get_procpos(), pktlst[0]->get_procpos() + szNext);
+            ds3_packet_buffer_t * retbuf = pktlst[0]->insert_to (buffer.size(), &buffer, pktlst[0]->get_procpos_next(), pktlst[0]->get_procpos_next() + szNext);
             if (NULL == retbuf) {
                 // error, break;
                 break;
@@ -593,8 +602,8 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
             assert ((ssize_t)(szorig1 + szNext) == buffer.size());
 
             szCur += szNext;
-            pktlst[0]->set_procpos (pktlst[0]->get_procpos() + szNext);
-            if (pktlst[0]->get_procpos() >= pktlst[0]->get_size()) {
+            pktlst[0]->set_procpos_next (pktlst[0]->get_procpos_next () + szNext);
+            if (pktlst[0]->get_procpos_next () >= pktlst[0]->get_size()) {
                 /* all of the contents of the front packet(pktlst[0]) in the queue are in sending buffer */
                 this->recycle_packet (pktlst[0]); // delete pktlst[0];
                 pktlst.erase (pktlst.begin());

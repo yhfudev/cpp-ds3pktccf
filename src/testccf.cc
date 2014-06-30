@@ -98,6 +98,7 @@ get_channel_packet_length ()
 ds3packet_t *
 get_channel_packet (int idx)
 {
+    assert (idx < g_pkt_in_channel.size());
     return g_pkt_in_channel.at(idx);
 }
 
@@ -401,6 +402,7 @@ test_pack (void)
         REQUIRE (0 == test_pack_random());
     }
 #endif // 0
+
     return 0;
 }
 
@@ -470,7 +472,7 @@ main1(void)
     REQUIRE (0 == test_ccfhdr());
     REQUIRE (0 == test_pktcnt());
     REQUIRE (0 == test_pack());
-    REQUIRE (0 == test_ns2ccf());
+    REQUIRE (0 == test_pktgnc());
     return 0;
 }
 #endif

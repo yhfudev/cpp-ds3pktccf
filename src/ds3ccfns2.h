@@ -12,30 +12,45 @@
 
 #include "ds3pktgnc.h"
 
+#ifndef USE_DS3NS2
+#define USE_DS3NS2 1
+#endif
+
+#if USE_DS3NS2
+
+#include <packet.h> // NS2
+#include "mac-docsis.h" // NS2
+
 /** @brief the ccf pack class for NS2 */
 class ds3_ccf_pack_ns2_t : public ds3_ccf_pack_t {
 public:
+    ds3_ccf_pack_ns2_t(MacDocsisCM * cm1 = NULL, size_t pbmul = 0) : ds3_ccf_pack_t(pbmul), cm(cm1) {}
 protected:
     virtual void recycle_packet (ds3packet_t *p);
     virtual void drop_packet (ds3packet_t *p);
     virtual int start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id);
     virtual double current_time (void);
+private:
+    MacDocsisCM *cm;
 };
 
 /** @brief the ccf unpack class for NS2 */
 class ds3_ccf_unpack_ns2_t : public ds3_ccf_unpack_t {
 public:
+    ds3_ccf_unpack_ns2_t(MacDocsisCMTS * cmts1 = NULL, size_t pbmul = 0) : ds3_ccf_unpack_t(pbmul), cmts(cmts1) {}
 protected:
     virtual void recycle_packet (ds3packet_t *p);
     virtual void drop_packet (ds3packet_t *p);
     virtual int signify_packet (ds3_packet_buffer_t & macbuffer);
     virtual int signify_piggyback (int sc, size_t request);
+private:
+    MacDocsisCMTS *cmts;
 };
 
 inline double
 ds3_ccf_pack_ns2_t::current_time (void)
 {
-    return time(NULL); //return Scheduler::instance().clock();
+    return Scheduler::instance().clock();
 }
 
 inline void
@@ -74,22 +89,17 @@ ds3_ccf_unpack_ns2_t::drop_packet (ds3packet_t *p)
     this->recycle_packet (p);
 }
 
-#if CCFDEBUG
-
-#else
-#include <packet.h> // NS2
-
 size_t ns2pkt_get_size (Packet *p);
 
 /**
  * @brief the packet content class for NS2 Packet class
  */
 class ds3_packet_buffer_ns2_t : public ds3_packet_buffer_gpkt_t {
-public::
+public:
 #if CCFDEBUG
     virtual void dump (void);
 #endif
-    Packet * extract_ns2pkt (size_t pos); // extract a Packet at the position pos,
+    Packet * extract_ns2pkt (size_t pos);
 
     ds3_packet_buffer_ns2_t() {}
     virtual ssize_t block_size_at (size_t pos);
@@ -110,10 +120,11 @@ public:
     void set_ns2packet (Packet *pkt1) { size_t sz = ns2pkt_get_size(pkt1); set_packet((ds3_packet_generic_t)pkt1, sz); }
 };
 
-#endif
 
 #if CCFDEBUG
 int test_ns2ccf (void);
+#endif
+
 #endif
 
 #endif /* _DS3CCFNS2_H */

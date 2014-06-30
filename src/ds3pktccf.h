@@ -44,19 +44,23 @@ public:
     virtual uint8_t & at(size_t i);
 #endif
 
-    ds3packet_t() : pos_next(0) {}
+    ds3packet_t() : pos_prev(0), pos_next(0) {}
     virtual ~ds3packet_t() { std::cout << "Destroy " << __func__ << std::endl; } /**< the children class should re-implement this destructor to release resource correctly */
 
     size_t get_size() { return to_nbs(NULL,0); } /**< return the size of the packet, including the packet header, */
     size_t size() { return to_nbs(NULL,0); } /**< return the size of the packet, including the packet header, */
 
-    size_t get_procpos () const { return pos_next; } /**< get the current (read) position of the raw packet data */
+    void reset_procpos (void) { pos_next = 0; pos_prev = 0;} /**< reset the position of the prev/next position to the original value */
+    size_t get_procpos_prev () const { return pos_prev; } /**< get the current (read) position of the raw packet data */
+    void set_procpos_prev (size_t s) { pos_prev = s; }
+
+    size_t get_procpos_next () const { return pos_next; } /**< get the current (read) position of the raw packet data */
     /**
      * @brief set the current (read) position of the raw packet data
      * @param s : the new position
      * @return N/A
      */
-    void set_procpos (size_t s) { pos_next = s; }
+    void set_procpos_next (size_t s) { pos_next = s; }
 
     /**
      * @brief convert the packet to network byte sequence and save it to nbsbuf, including the packet header
@@ -157,7 +161,8 @@ protected:
 #endif
 
 private:
-    size_t pos_next; /**< the current processed start possition; used for send/recv-ing packet/segment */
+    size_t pos_prev; /**< the current processed previous segment possition; used for send/recv-ing packet/segment */
+    size_t pos_next; /**< the current processed next segment possition; used for send/recv-ing packet/segment */
 };
 
 /* check the arguments for ds3packet_t::insert_to() */
@@ -285,7 +290,7 @@ class ds3_ccf_pack_t : public ds3_ccf_base_t {
 public:
     virtual int process_packet (ds3packet_t *p);
 
-    ds3_ccf_pack_t () : sequence(0), piggyback_inc(0) {}
+    ds3_ccf_pack_t (size_t pbmul = 0) : ds3_ccf_base_t(pbmul), sequence(0), piggyback_inc(0) {}
     int add_grants (std::vector<ds3_grant_t> & grants, size_t piggyback);
 
 protected:
@@ -314,6 +319,7 @@ private:
  */
 class ds3_ccf_unpack_t : public ds3_ccf_base_t {
 public:
+    ds3_ccf_unpack_t (size_t pbmul = 0) : ds3_ccf_base_t(pbmul) {}
     virtual int process_packet (ds3packet_t *p);
 
 protected:
