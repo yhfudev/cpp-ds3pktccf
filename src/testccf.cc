@@ -96,7 +96,7 @@ get_channel_packet_length ()
 }
 
 ds3packet_t *
-get_channel_packet (int idx)
+get_channel_packet (size_t idx)
 {
     assert (idx < g_pkt_in_channel.size());
     return g_pkt_in_channel.at(idx);
@@ -268,7 +268,8 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
         nbscnt.resize(0);
     }
 
-    pak.add_grants (mygrants, 355);
+    pak.add_piggyback (355);
+    pak.add_grants (mygrants);
     std::cout << "channel packet # = " << get_channel_packet_length() << std::endl;
     for (i = 0; i < (size_t)get_channel_packet_length(); i ++) {
         pkt = get_channel_packet(i);

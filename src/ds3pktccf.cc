@@ -650,12 +650,20 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
  * This function will also process the MAC packets for all of the added grants
  */
 int
-ds3_ccf_pack_t::add_grants (std::vector<ds3_grant_t> & grants, size_t piggyback)
+ds3_ccf_pack_t::add_grants (std::vector<ds3_grant_t> & grants)
 {
-    piggyback_inc += piggyback;
     grantlst.insert (grantlst.end(), grants.begin(), grants.end());
     std::sort (grantlst.begin(), grantlst.end());
 
+    process_packet (NULL);
+    return 0;
+}
+
+int
+ds3_ccf_pack_t::add_grant (ds3_grant_t & grant)
+{
+    grantlst.insert (grantlst.end(), grant);
+    std::sort (grantlst.begin(), grantlst.end());
     process_packet (NULL);
     return 0;
 }

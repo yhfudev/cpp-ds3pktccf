@@ -21,16 +21,34 @@
 #include <packet.h> // NS2
 #include "mac-docsis.h" // NS2
 
+// Packet
+struct hdr_docsisccf {
+    ds3hdr_ccf_t ccfhdr;
+
+    static int offset_;
+    static int & offset() { return offset_; }
+    static hdr_docsisccf * access(const Packet* p) { return (hdr_docsisccf*) p->access(offset_); }
+};
+#define HDR_DOCSISCCF(p)   (hdr_docsisccf::access(p))
+
+
 /** @brief the ccf pack class for NS2 */
 class ds3_ccf_pack_ns2_t : public ds3_ccf_pack_t {
 public:
     ds3_ccf_pack_ns2_t(MacDocsisCM * cm1 = NULL, size_t pbmul = 0) : ds3_ccf_pack_t(pbmul), cm(cm1) {}
+    int process_packet (unsigned char tbindex, Packet *p);
+
 protected:
     virtual void recycle_packet (ds3packet_t *p);
     virtual void drop_packet (ds3packet_t *p);
     virtual int start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id);
     virtual double current_time (void);
+
 private:
+    size_t get_ns2_piggyback (unsigned char tbindex);
+    bool get_ns2_grant (unsigned char tbindex, int grant_type, ds3_grant_t & grant);
+    void add_more_grants (unsigned char tbindex);
+
     MacDocsisCM *cm;
 };
 
@@ -38,11 +56,14 @@ private:
 class ds3_ccf_unpack_ns2_t : public ds3_ccf_unpack_t {
 public:
     ds3_ccf_unpack_ns2_t(MacDocsisCMTS * cmts1 = NULL, size_t pbmul = 0) : ds3_ccf_unpack_t(pbmul), cmts(cmts1) {}
+    int process_packet (Packet *p);
+
 protected:
     virtual void recycle_packet (ds3packet_t *p);
     virtual void drop_packet (ds3packet_t *p);
     virtual int signify_packet (ds3_packet_buffer_t & macbuffer);
     virtual int signify_piggyback (int sc, size_t request);
+
 private:
     MacDocsisCMTS *cmts;
 };

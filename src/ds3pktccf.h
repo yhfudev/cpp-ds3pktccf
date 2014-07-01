@@ -291,9 +291,13 @@ public:
     virtual int process_packet (ds3packet_t *p);
 
     ds3_ccf_pack_t (size_t pbmul = 0) : ds3_ccf_base_t(pbmul), sequence(0), piggyback_inc(0) {}
-    int add_grants (std::vector<ds3_grant_t> & grants, size_t piggyback);
+    void add_piggyback (size_t piggyback) { this->piggyback_inc += piggyback; }
+    int add_grants (std::vector<ds3_grant_t> & grants);
+    int add_grant (ds3_grant_t & grants);
 
 protected:
+    size_t get_pktlst_size(void) { return this->pktlst.size(); }
+
     /**
      * @brief start a timer for sending packet once timeout
      * @param abs_time : the abstruct time that the event should fire
