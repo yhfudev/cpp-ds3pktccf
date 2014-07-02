@@ -18,6 +18,7 @@
 #if USE_DS3NS2
 #include <packet.h> // NS2
 #include "hdr-docsis.h"
+#include "mac-docsis.h" // NS2
 
 int hdr_docsisccf::offset_;
 
@@ -39,7 +40,8 @@ ds3_ccf_pack_ns2_t::get_ns2_grant (unsigned char tbindex, int grant_type, ds3_gr
     assert (NULL != this->cm);
     double tm;
     int channel_id;
-    tm = cm->timer_expiration(tbindex, grant_type, &channel_id);
+    assert (NULL != this->cm);
+    tm = this->cm->timer_expiration(tbindex, grant_type, &channel_id);
     if (tm < 0) {
         return false;
     }
@@ -63,21 +65,22 @@ ds3_ccf_pack_ns2_t::get_ns2_grant (unsigned char tbindex, int grant_type, ds3_gr
 }
 
 size_t
-ds3_ccf_pack_ns2_t::get_ns2_piggyback (unsigned char tbindex)
+ds3_ccf_pack_ns2_t::get_ns2_piggyback (unsigned char tbindex, int grant_type)
 {
-    // TODO
-    // get the value
-    // reset the ns2 value to 0?
-    return 0;
+    assert (NULL != this->cm);
+    size_t ret = this->cm->UpFlowTable[tbindex].frag_data;
+    this->cm->UpFlowTable[tbindex].frag_data = 0;
+    return ret;
+
 }
 
 void
-ds3_ccf_pack_ns2_t::add_more_grants (unsigned char tbindex)
+ds3_ccf_pack_ns2_t::add_more_grants (unsigned char tbindex, int grant_type)
 {
     ds3_grant_t grant;
     for ( ; this->get_pktlst_size() > 0; ) {
-        this->add_piggyback (this->get_ns2_piggyback (tbindex));
-        if (this->get_ns2_grant (tbindex, DATA_GRANT, grant)) {
+        this->add_piggyback (this->get_ns2_piggyback (tbindex, grant_type));
+        if (this->get_ns2_grant (tbindex, grant_type, grant)) {
             this->add_grant (grant);
         } else {
             break;
@@ -86,7 +89,7 @@ ds3_ccf_pack_ns2_t::add_more_grants (unsigned char tbindex)
 }
 
 int
-ds3_ccf_pack_ns2_t::process_packet (unsigned char tbindex, Packet *ns2pkt)
+ds3_ccf_pack_ns2_t::process_packet (Packet *ns2pkt)
 {
     ds3packet_ns2mac_t *gp = new ds3packet_ns2mac_t ();
     assert (NULL != gp);
@@ -96,8 +99,89 @@ ds3_ccf_pack_ns2_t::process_packet (unsigned char tbindex, Packet *ns2pkt)
 
     gp->set_ns2packet (ns2pkt);
     ds3_ccf_pack_t::process_packet (gp);
-    this->add_more_grants (tbindex);
+    this->add_more_grants (this->tbindex_, this->grant_type_);
     return 0;
+}
+
+/**
+ * @brief check if (i < j)
+ * @param i : the left hand of the value
+ * @param j : the right hand of the value
+ * @return true if (i < j), false otherwise
+ */
+inline bool
+compare_sndpktp (ns2tm_sendpkt_info_t i, ns2tm_sendpkt_info_t j)
+{
+    return (i.time < j.time);
+}
+
+void
+ns2timer_sending_t::expire_task (void)
+{
+    double curtime = Scheduler::instance().clock();
+    std::vector<ns2tm_sendpkt_info_t>::iterator it = this->pktlist.begin();
+    for ( ; this->pktlist.size() > 0; ) {
+        if (curtime < this->pktlist[0].time) {
+            break;
+        }
+        // expire it
+        // check if the timer is accurate enough
+        if (curtime > this->pktlist[0].time + 0.0000001) {
+            assert (0);
+        }
+        this->t_->MacSendFrame (this->pktlist[0].pkt, this->pktlist[0].channel_id);
+
+        std::pop_heap (this->pktlist.begin(), this->pktlist.end(), compare_sndpktp);
+        this->pktlist.pop_back();
+    }
+}
+
+bool
+ns2timer_sending_t::add_sending_task (Packet * pkt, size_t channel_id, double time)
+{
+    ns2tm_sendpkt_info_t rec;
+    rec.pkt = pkt;
+    rec.channel_id = channel_id;
+    rec.time = time;
+
+    double curtime = Scheduler::instance().clock();
+    bool flg_changed = true;
+
+    if (this->pktlist.size() > 0) {
+        if (time < this->pktlist[0].time) {
+            this->cancel();
+            flg_changed = true;
+        } else {
+            flg_changed = false;
+        }
+        if (curtime >= this->pktlist[0].time) {
+            assert (0); // error
+            flg_changed = true;
+            this->cancel();
+        }
+    }
+
+    this->pktlist.push_back (rec);
+    std::push_heap (this->pktlist.begin(), this->pktlist.end(), compare_sndpktp);
+    this->expire_task ();
+    if (this->pktlist.size () > 0) {
+        if (flg_changed) {
+            this->resched (this->pktlist[0].time - curtime);
+        }
+    } else {
+        return false;
+    }
+    return true;
+}
+
+void
+ns2timer_sending_t::expire (Event* evt)
+{
+    double curtime = Scheduler::instance().clock();
+    this->expire_task();
+    if (this->pktlist.size () > 0) {
+        this->resched (this->pktlist[0].time - curtime);
+    }
 }
 
 #define CCFMAGIC 0x0ccfccf0
@@ -128,7 +212,9 @@ ds3_ccf_pack_ns2_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3pack
     pinfo->ccfmagic = CCFMAGIC;
     pinfo->ccfpkt = p;
 
-    // TODO: send ns2pkt
+    // send ns2pkt
+    this->tmr_send.add_sending_task(ns2pkt, channel_id, abs_time);
+    assert (NULL != this->cm);
     assert (0);
     return -1;
 }
@@ -161,6 +247,7 @@ ds3_ccf_unpack_ns2_t::signify_packet (ds3_packet_buffer_t & macbuffer)
     assert ((PT_DOCSIS <= chdr->ptype()) && (chdr->ptype() <= PT_DOCSISCONCAT));
 
     // push ns2pkt to uplayer
+    assert (NULL != this->cmts);
     this->cmts->RecvFrame (ns2pkt, 0);
     return 0;
 }
@@ -169,11 +256,9 @@ int
 ds3_ccf_unpack_ns2_t::signify_piggyback (int sc, size_t request)
 {
     std::cout << "Got a unpacked piggyback request: sc=" << sc << ", request=" << request << std::endl;
-    //Packet *ns2pkt = NULL; //new Packet();
-    //assert (NULL != ns2pkt);
-    // TODO
-    assert (0);
-    return -1;
+    assert (NULL != this->cmts);
+    this->cmts->process_piggyback (sc, request);
+    return 0;
 }
 
 
@@ -268,6 +353,8 @@ ns2pkt_get_size (Packet *p)
         /* Queue-Depth based request, MAC_PARM is 2 bytes, not 1 byte */
         len ++;
     }
+    struct hdr_cmn* cmnhdr = HDR_CMN(p);
+    assert (len == (size_t)cmnhdr->size());
     return len;
 }
 

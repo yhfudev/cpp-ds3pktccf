@@ -251,6 +251,7 @@ test_pack_gp (size_t * grantsize, size_t numg, size_t * packetsize, size_t nump)
     }
 
     // we add 5 packet (size=5)
+    pak.set_sc(0x7);
     ds3_packet_buffer_nbs_t nbscnt;
     for (i = 0; i < nump; i ++) {
         pktns2 = new ds3packet_nbsmac_t ();

@@ -19,7 +19,10 @@
 #if USE_DS3NS2
 
 #include <packet.h> // NS2
-#include "mac-docsis.h" // NS2
+#include <timer-handler.h> // NS2
+class Packet;
+class MacDocsisCM;
+class MacDocsisCMTS;
 
 // Packet
 struct hdr_docsisccf {
@@ -31,12 +34,36 @@ struct hdr_docsisccf {
 };
 #define HDR_DOCSISCCF(p)   (hdr_docsisccf::access(p))
 
+#define PBMULTIPLIER_DEFAULT 8
+
+typedef struct _ns2tm_sendpkt_info_t {
+    Packet * pkt;       /**< the Packet */
+    size_t channel_id;  /**< channel id */
+    double time;        /**< the time to send te packet */
+} ns2tm_sendpkt_info_t;
+
+// a timer for sending the packet
+class ns2timer_sending_t: public TimerHandler {
+public:
+    ns2timer_sending_t (MacDocsisCM * t) : t_(t) {}
+    virtual void expire (Event * evt);
+
+    bool add_sending_task (Packet * pkt, size_t channel_id, double time);
+
+private:
+    void expire_task (void);
+    MacDocsisCM *t_;
+    std::vector<ns2tm_sendpkt_info_t> pktlist;
+};
 
 /** @brief the ccf pack class for NS2 */
 class ds3_ccf_pack_ns2_t : public ds3_ccf_pack_t {
 public:
-    ds3_ccf_pack_ns2_t(MacDocsisCM * cm1 = NULL, size_t pbmul = 0) : ds3_ccf_pack_t(pbmul), cm(cm1) {}
-    int process_packet (unsigned char tbindex, Packet *p);
+    ds3_ccf_pack_ns2_t(MacDocsisCM * cm1 = NULL, size_t pbmul = PBMULTIPLIER_DEFAULT) : ds3_ccf_pack_t(pbmul), cm(cm1), tmr_send(cm1) {}
+
+    void set_flow_type (unsigned char tbindex, int grant_type) { this->tbindex_ = tbindex; this->grant_type_ = grant_type; } /** for NS2 DOCSIS 2.0 module interface only */
+
+    int process_packet (Packet *ns2pkt);
 
 protected:
     virtual void recycle_packet (ds3packet_t *p);
@@ -45,17 +72,20 @@ protected:
     virtual double current_time (void);
 
 private:
-    size_t get_ns2_piggyback (unsigned char tbindex);
+    size_t get_ns2_piggyback (unsigned char tbindex, int grant_type);
     bool get_ns2_grant (unsigned char tbindex, int grant_type, ds3_grant_t & grant);
-    void add_more_grants (unsigned char tbindex);
+    void add_more_grants (unsigned char tbindex, int grant_type);
 
-    MacDocsisCM *cm;
+    MacDocsisCM * cm;
+    unsigned char tbindex_;
+    int grant_type_;
+    ns2timer_sending_t tmr_send;
 };
 
 /** @brief the ccf unpack class for NS2 */
 class ds3_ccf_unpack_ns2_t : public ds3_ccf_unpack_t {
 public:
-    ds3_ccf_unpack_ns2_t(MacDocsisCMTS * cmts1 = NULL, size_t pbmul = 0) : ds3_ccf_unpack_t(pbmul), cmts(cmts1) {}
+    ds3_ccf_unpack_ns2_t(MacDocsisCMTS * cmts1 = NULL, size_t pbmul = PBMULTIPLIER_DEFAULT) : ds3_ccf_unpack_t(pbmul), cmts(cmts1) {}
     int process_packet (Packet *p);
 
 protected:

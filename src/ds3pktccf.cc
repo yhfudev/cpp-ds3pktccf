@@ -172,7 +172,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
         // get the piggyback request
         ds3hdr_ccf_t & ccfhdr = pktin->get_header();
         if (ccfhdr.request > 0) {
-            this->signify_piggyback (ccfhdr.sc, ccfhdr.request);
+            this->signify_piggyback (ccfhdr.sc, ccfhdr.request * this->get_pbmultiplier());
         }
 
         pktin->set_procpos_next(0);
@@ -615,10 +615,11 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
         if (szCur > (size_t)ds3hdr_ccf_to_nbs(NULL, 0, NULL)) {
             /* It's time to send the segment, and continue to next grant */
             if (this->piggyback_inc > 0) {
-                ccfhdr.request = this->piggyback_inc / DS3_MULTIPLIER_REQUEST;
+                ccfhdr.request = this->piggyback_inc / this->get_pbmultiplier();
                 this->piggyback_inc = 0;
             }
             ccfhdr.sequence = this->get_next_sequence();
+            ccfhdr.sc = this->scid;
             /* set the CCF header */
             ds3packet_ccf_t * ccfpkt = new ds3packet_ccf_t();
             assert (NULL != ccfpkt);

@@ -294,6 +294,7 @@ public:
     void add_piggyback (size_t piggyback) { this->piggyback_inc += piggyback; }
     int add_grants (std::vector<ds3_grant_t> & grants);
     int add_grant (ds3_grant_t & grants);
+    void set_sc (uint8_t sc) { this->scid = sc;} /**< set the SID Cluster ID */
 
 protected:
     size_t get_pktlst_size(void) { return this->pktlst.size(); }
@@ -316,6 +317,7 @@ private:
     std::vector<ds3packet_t *> pktlst; /**< the list of all MAC packets will be packed to CCF segments */
     std::vector<ds3_grant_t>   grantlst; /**< the list of all grants */
     size_t piggyback_inc; /**< the piggyback request value */
+    uint8_t scid; /**< SID Cluster ID */
 };
 
 /**
