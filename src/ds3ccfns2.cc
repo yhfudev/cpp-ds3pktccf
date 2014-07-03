@@ -32,6 +32,51 @@ public:
     }
 } class_hdr_docsisccf;
 
+/**
+ * @brief extract a Packet at the position pos
+ *
+ * @param pgpkt : [in] the generic packet buffer pointer
+ * @param pos : [in] the start position of a MAC packet header in the buffer
+ *
+ * @return the MAC packet created on success, NULL on error
+ *
+ */
+Packet *
+gpkt_extract_ns2pkt (ds3_packet_buffer_gpkt_t *pgpkt, size_t pos)
+{
+    assert (NULL != pgpkt);
+    ds3_packet_generic_t gp = pgpkt->extract_gpkt (pos);
+    if (NULL == gp) {
+        return NULL;
+    }
+    //Packet * np = (Packet *)gp;
+    Packet * np = (Packet *)(gp); //dynamic_cast<Packet *>(gp);
+    assert (NULL != np);
+    // check the size of packet
+    ssize_t ret;
+    ret = pgpkt->block_size_at (pos);
+    if (ret != (ssize_t)ns2pkt_get_size(np)) {
+        // error
+        assert (0);
+        return NULL;
+    }
+    return np;
+}
+
+/**
+ * @brief extract a Packet at the position pos
+ *
+ * @param pos : [in] the start position of a MAC packet header in the buffer
+ *
+ * @return the MAC packet created on success, NULL on error
+ *
+ */
+Packet *
+ds3_packet_buffer_ns2_t::extract_ns2pkt (size_t pos)
+{
+    return gpkt_extract_ns2pkt(this, pos);
+}
+
 // get a grant from the data structure
 // grant_type: DATA_GRANT/UGS_GRANT/UREQ_GRANT/CONTENTION_GRANT/
 bool
@@ -71,7 +116,6 @@ ds3_ccf_pack_ns2_t::get_ns2_piggyback (unsigned char tbindex, int grant_type)
     size_t ret = this->cm->UpFlowTable[tbindex].frag_data;
     this->cm->UpFlowTable[tbindex].frag_data = 0;
     return ret;
-
 }
 
 void
@@ -95,7 +139,18 @@ ds3_ccf_pack_ns2_t::process_packet (Packet *ns2pkt)
     assert (NULL != gp);
 
     hdr_cmn * chdr = hdr_cmn::access(ns2pkt);
-    assert ((PT_DOCSIS <= chdr->ptype()) && (chdr->ptype() <= PT_DOCSISCONCAT));
+    //assert ((PT_DOCSIS <= chdr->ptype()) && (chdr->ptype() <= PT_DOCSISCONCAT));
+
+    // record mac address?
+    if (this->mac_dest < 0) {
+        struct hdr_cmn *cmn = HDR_CMN(ns2pkt);
+        struct hdr_mac* mh = HDR_MAC(ns2pkt);
+        this->mac_dest = mh->macSA();
+    } else {
+        struct hdr_cmn *cmn = HDR_CMN(ns2pkt);
+        struct hdr_mac* mh = HDR_MAC(ns2pkt);
+        assert (this->mac_dest == mh->macSA());
+    }
 
     gp->set_ns2packet (ns2pkt);
     ds3_ccf_pack_t::process_packet (gp);
@@ -184,12 +239,6 @@ ns2timer_sending_t::expire (Event* evt)
     }
 }
 
-#define CCFMAGIC 0x0ccfccf0
-typedef struct _ns2_ds3pkt_info_t {
-    size_t ccfmagic;
-    ds3packet_t *ccfpkt;
-} ns2_ds3pkt_info_t;
-
 int
 ds3_ccf_pack_ns2_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3packet_t * p, size_t channel_id)
 {
@@ -211,12 +260,13 @@ ds3_ccf_pack_ns2_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3pack
     assert (NULL != pinfo);
     pinfo->ccfmagic = CCFMAGIC;
     pinfo->ccfpkt = p;
+    assert (this->mac_dest >= 0);
+    pinfo->mac_dest = this->mac_dest;
 
     // send ns2pkt
-    this->tmr_send.add_sending_task(ns2pkt, channel_id, abs_time);
+    this->tmr_send.add_sending_task (ns2pkt, channel_id, abs_time);
     assert (NULL != this->cm);
-    assert (0);
-    return -1;
+    return 0;
 }
 
 int
@@ -239,12 +289,14 @@ int
 ds3_ccf_unpack_ns2_t::signify_packet (ds3_packet_buffer_t & macbuffer)
 {
     assert (macbuffer.size() > 0);
-    ds3_packet_buffer_ns2_t *p = dynamic_cast<ds3_packet_buffer_ns2_t *>(macbuffer.get_buffer());
+    //ds3_packet_buffer_ns2_t *p = dynamic_cast<ds3_packet_buffer_ns2_t *>(macbuffer.get_buffer());
+    ds3_packet_buffer_gpkt_t *p = dynamic_cast<ds3_packet_buffer_gpkt_t *>(macbuffer.get_buffer());
     assert (NULL != p);
-    Packet *ns2pkt = p->extract_ns2pkt(0);
+
+    Packet *ns2pkt = gpkt_extract_ns2pkt(p, 0);
     assert (NULL != ns2pkt);
     hdr_cmn * chdr = hdr_cmn::access(ns2pkt);
-    assert ((PT_DOCSIS <= chdr->ptype()) && (chdr->ptype() <= PT_DOCSISCONCAT));
+    //assert ((PT_DOCSIS <= chdr->ptype()) && (chdr->ptype() <= PT_DOCSISCONCAT));
 
     // push ns2pkt to uplayer
     assert (NULL != this->cmts);
@@ -282,35 +334,6 @@ ds3packet_ns2mac_t::dump (void)
     this->dump_content ();
 }
 #endif
-
-/**
- * @brief extract a Packet at the position pos
- *
- * @param pos : [in] the start position of a MAC packet header in the buffer
- *
- * @return the MAC packet created on success, NULL on error
- *
- */
-Packet *
-ds3_packet_buffer_ns2_t::extract_ns2pkt (size_t pos)
-{
-    ds3_packet_generic_t gp = ds3_packet_buffer_gpkt_t::extract_gpkt (pos);
-    if (NULL == gp) {
-        return NULL;
-    }
-    //Packet * np = (Packet *)gp;
-    Packet * np = (Packet *)(gp); //dynamic_cast<Packet *>(gp);
-    assert (NULL != np);
-    // check the size of packet
-    ssize_t ret;
-    ret = ds3_packet_buffer_gpkt_t::block_size_at (pos);
-    if (ret != (ssize_t)ns2pkt_get_size(np)) {
-        // error
-        assert (0);
-        return NULL;
-    }
-    return np;
-}
 
 // can we get the lenght of a MAC packet
 bool
@@ -381,6 +404,17 @@ ds3_packet_buffer_ns2_t::block_size_at (size_t pos)
 
     return ret;
 }
+
+ssize_t
+ds3packet_ns2mac_t::to_nbs (uint8_t *nbsbuf, size_t szbuf)
+{
+    if (0 == szbuf) {
+        return ns2pkt_get_size((Packet *)this->get_packet ());
+    }
+    assert (0);
+    return -1;
+}
+
 
 #if CCFDEBUG
 int

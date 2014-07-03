@@ -592,6 +592,7 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
             /* fill the buffer */
             //ssize_t ret1 = pktlst[0]->get_pkt_bytes (pktlst[0]->get_procpos(), buffer, szNext);
             //assert ((size_t)ret1 == szNext);
+            assert (buffer.size() >= 0);
             size_t szorig1 = buffer.size();
             ds3_packet_buffer_t * retbuf = pktlst[0]->insert_to (buffer.size(), &buffer, pktlst[0]->get_procpos_next(), pktlst[0]->get_procpos_next() + szNext);
             if (NULL == retbuf) {

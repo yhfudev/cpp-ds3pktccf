@@ -143,7 +143,7 @@ public:
                 return this->contents_buffer->size();
             }
             //DS3_WRONGFUNC_RETVAL(-1);
-            return 0;
+            return 0; //to_nbs(NULL, 0);
         }
 
     /**

@@ -59,7 +59,7 @@ private:
 /** @brief the ccf pack class for NS2 */
 class ds3_ccf_pack_ns2_t : public ds3_ccf_pack_t {
 public:
-    ds3_ccf_pack_ns2_t(MacDocsisCM * cm1 = NULL, size_t pbmul = PBMULTIPLIER_DEFAULT) : ds3_ccf_pack_t(pbmul), cm(cm1), tmr_send(cm1) {}
+    ds3_ccf_pack_ns2_t(MacDocsisCM * cm1 = NULL, size_t pbmul = PBMULTIPLIER_DEFAULT) : ds3_ccf_pack_t(pbmul), cm(cm1), tmr_send(cm1), mac_dest(-1) {}
 
     void set_flow_type (unsigned char tbindex, int grant_type) { this->tbindex_ = tbindex; this->grant_type_ = grant_type; } /** for NS2 DOCSIS 2.0 module interface only */
 
@@ -80,6 +80,7 @@ private:
     unsigned char tbindex_;
     int grant_type_;
     ns2timer_sending_t tmr_send;
+    int mac_dest;
 };
 
 /** @brief the ccf unpack class for NS2 */
@@ -168,9 +169,17 @@ public:
 #if CCFDEBUG
     virtual void dump (void);
 #endif
+    virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
+
     void set_ns2packet (Packet *pkt1) { size_t sz = ns2pkt_get_size(pkt1); set_packet((ds3_packet_generic_t)pkt1, sz); }
 };
 
+#define CCFMAGIC 0x0ccfccf0
+typedef struct _ns2_ds3pkt_info_t {
+    size_t ccfmagic;
+    ds3packet_t *ccfpkt;
+    int mac_dest;       /**< the destination MAC address */
+} ns2_ds3pkt_info_t;
 
 #if CCFDEBUG
 int test_ns2ccf (void);

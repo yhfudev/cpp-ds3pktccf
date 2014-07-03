@@ -202,6 +202,9 @@ ds3_packet_buffer_nbs_t::ds3_packet_buffer_nbs_t(ds3_packet_buffer_t *arg_peer, 
 ssize_t
 ds3_packet_buffer_nbs_t::to_nbs (uint8_t *nbsbuf, size_t szbuf)
 {
+    if (0 == szbuf) {
+        return this->buffer.size();
+    }
     assert (szbuf >= this->buffer.size());
     if (szbuf > this->buffer.size()) {
         szbuf = this->buffer.size();
