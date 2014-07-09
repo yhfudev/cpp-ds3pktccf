@@ -17,8 +17,8 @@
 
 #if USE_DS3NS2
 #include <packet.h> // NS2
-#include "hdr-docsis.h"
 #include "mac-docsis.h" // NS2
+#include "hdr-docsis.h"
 
 int hdr_docsisccf::offset_;
 
@@ -77,6 +77,13 @@ ds3_packet_buffer_ns2_t::extract_ns2pkt (size_t pos)
     return gpkt_extract_ns2pkt(this, pos);
 }
 
+uint8_t &
+ds3_packet_buffer_ns2_t::at(size_t i)
+{
+    static uint8_t t = -1;
+    DS3_WRONGFUNC_RETVAL(t);
+}
+
 // get a grant from the data structure
 // grant_type: DATA_GRANT/UGS_GRANT/UREQ_GRANT/CONTENTION_GRANT/
 bool
@@ -96,14 +103,19 @@ ds3_ccf_pack_ns2_t::get_ns2_grant (unsigned char tbindex, int grant_type, ds3_gr
         grant.set_size (this->cm->UpFlowTable[tbindex].curr_gsize);
         this->cm->UpFlowTable[tbindex].curr_gsize = 0;
         break;
-    case UREQ_GRANT:
-        assert (0);
-        return false;
-        break;
+
     case CONTENTION_GRANT:
         grant.set_size (this->cm->bytes_pminislot);
         break;
+
+    case UREQ_GRANT:
+    default:
+        assert (0);
+        return false;
+        break;
     }
+    assert (grant.get_size() > 10);
+    grant.set_size( 0.92 * grant.get_size() - 10 );
     grant.set_time (this->current_time() + tm);
     grant.set_channel_id (channel_id);
     return true;
@@ -138,16 +150,14 @@ ds3_ccf_pack_ns2_t::process_packet (Packet *ns2pkt)
     ds3packet_ns2mac_t *gp = new ds3packet_ns2mac_t ();
     assert (NULL != gp);
 
-    hdr_cmn * chdr = hdr_cmn::access(ns2pkt);
+    hdr_cmn * chdr = HDR_CMN(ns2pkt);
     //assert ((PT_DOCSIS <= chdr->ptype()) && (chdr->ptype() <= PT_DOCSISCONCAT));
 
     // record mac address?
     if (this->mac_dest < 0) {
-        struct hdr_cmn *cmn = HDR_CMN(ns2pkt);
         struct hdr_mac* mh = HDR_MAC(ns2pkt);
         this->mac_dest = mh->macSA();
     } else {
-        struct hdr_cmn *cmn = HDR_CMN(ns2pkt);
         struct hdr_mac* mh = HDR_MAC(ns2pkt);
         assert (this->mac_dest == mh->macSA());
     }
@@ -167,7 +177,7 @@ ds3_ccf_pack_ns2_t::process_packet (Packet *ns2pkt)
 inline bool
 compare_sndpktp (ns2tm_sendpkt_info_t i, ns2tm_sendpkt_info_t j)
 {
-    return (i.time < j.time);
+    return (i.time > j.time);
 }
 
 void
@@ -181,10 +191,13 @@ ns2timer_sending_t::expire_task (void)
         }
         // expire it
         // check if the timer is accurate enough
-        if (curtime > this->pktlist[0].time + 0.0000001) {
+        /*if (curtime > this->pktlist[0].time + 0.0000001) {
             assert (0);
-        }
-        this->t_->MacSendFrame (this->pktlist[0].pkt, this->pktlist[0].channel_id);
+        }*/
+        std::cerr.precision(10);
+        std::cout.precision(10);
+        std::cerr << "ds3ns2: curtime=" << curtime << ", send packet tm=" << this->pktlist[0].time << " at channel " << this->pktlist[0].channel_id << std::endl;
+        this->t_->MacSendFrame0 (this->pktlist[0].pkt, this->pktlist[0].channel_id);
 
         std::pop_heap (this->pktlist.begin(), this->pktlist.end(), compare_sndpktp);
         this->pktlist.pop_back();
@@ -245,16 +258,17 @@ ds3_ccf_pack_ns2_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3pack
     std::cout << "Got a packed CCF segment: " << std::endl;
     std::cout << "  -- start timer: tm=" << abs_time << ", event=" << ds3_event2desc(evt) << ", pkt.size=" << p->get_size() << ", channelId=" << channel_id << std::endl;
 
-    ds3packet_ccf_t *ccfp = dynamic_cast<ds3packet_ccf_t *>(p);
+    ds3packet_ccf_t * ccfp = dynamic_cast<ds3packet_ccf_t * >(p);
     assert (NULL != ccfp);
 
-    Packet *ns2pkt = Packet::alloc( sizeof (ns2_ds3pkt_info_t) );
+    Packet * ns2pkt = PACKET_ALLOCN ( sizeof (ns2_ds3pkt_info_t) );
     assert (NULL != ns2pkt);
 
-    hdr_cmn * chdr = hdr_cmn::access(ns2pkt);
+    hdr_cmn * chdr = HDR_CMN(ns2pkt);
     assert (NULL != p);
     chdr->ptype() = PT_DOCSISCCF;
     chdr->size() = p->size();
+    chdr->direction() = hdr_cmn::DOWN;
 
     ns2_ds3pkt_info_t * pinfo = (ns2_ds3pkt_info_t *)ns2pkt->accessdata();
     assert (NULL != pinfo);
@@ -270,15 +284,17 @@ ds3_ccf_pack_ns2_t::start_sndpkt_timer (double abs_time, ds3event_t evt, ds3pack
 }
 
 int
-ds3_ccf_unpack_ns2_t::process_packet (Packet *ns2pkt)
+ds3_ccf_unpack_ns2_t::process_packet (Packet * ns2pkt)
 {
-    hdr_cmn * chdr = hdr_cmn::access(ns2pkt);
+    hdr_cmn * chdr = HDR_CMN(ns2pkt);
     assert (chdr->ptype() == PT_DOCSISCCF);
+    // debug:
+    std::cerr << __func__ << " recv ns2pkt " << ( (hdr_cmn::DOWN == chdr->direction()) ? "cmn::DOWN" : "cmn::UP" ) << std::endl;
 
-    ns2_ds3pkt_info_t * pinfo = (ns2_ds3pkt_info_t *)ns2pkt->accessdata();
+    ns2_ds3pkt_info_t * pinfo = (ns2_ds3pkt_info_t * )ns2pkt->accessdata();
     assert (pinfo->ccfmagic == CCFMAGIC);
 
-    ds3packet_t *gp = pinfo->ccfpkt;
+    ds3packet_t * gp = pinfo->ccfpkt;
     assert (NULL != gp);
     Packet::free (ns2pkt);
 
@@ -289,13 +305,30 @@ int
 ds3_ccf_unpack_ns2_t::signify_packet (ds3_packet_buffer_t & macbuffer)
 {
     assert (macbuffer.size() > 0);
-    //ds3_packet_buffer_ns2_t *p = dynamic_cast<ds3_packet_buffer_ns2_t *>(macbuffer.get_buffer());
+#if 1
+    ds3_packet_buffer_ns2_t *p = dynamic_cast<ds3_packet_buffer_ns2_t *>(macbuffer.get_buffer());
+#else
     ds3_packet_buffer_gpkt_t *p = dynamic_cast<ds3_packet_buffer_gpkt_t *>(macbuffer.get_buffer());
+#endif
     assert (NULL != p);
-
+    if (NULL == p) {
+        std::cerr << "ds3ccf: Fatal Error, packet buffer type" << std::endl;
+        assert (0);
+        return -1;
+    }
+#if 1
+    Packet *ns2pkt = p->extract_ns2pkt(0);
+#else
     Packet *ns2pkt = gpkt_extract_ns2pkt(p, 0);
+#endif
     assert (NULL != ns2pkt);
-    hdr_cmn * chdr = hdr_cmn::access(ns2pkt);
+    if (NULL == p) {
+        std::cerr << "ds3ccf: Fatal Error, packet buffer data" << std::endl;
+        assert (0);
+        return -1;
+    }
+    hdr_cmn * chdr = HDR_CMN(ns2pkt);
+    chdr->direction() = hdr_cmn::UP;
     //assert ((PT_DOCSIS <= chdr->ptype()) && (chdr->ptype() <= PT_DOCSISCONCAT));
 
     // push ns2pkt to uplayer

@@ -24,6 +24,17 @@ class Packet;
 class MacDocsisCM;
 class MacDocsisCMTS;
 
+#ifndef PACKET_ALLOC
+#define PKTACCESSLOG(p,v) (0)
+#define PACKET_ALLOC()   Packet::alloc()
+#define PACKET_ALLOCN(n) Packet::alloc(n)
+#define PACKET_ALLOCDATA(n)   Packet::allocdata(n))
+//#define PKTACCESSLOG(p,v) ((p)->accesslog((v),__func__,__FILE__,__LINE__))
+//#define PACKET_ALLOC()   Packet::alloc(__func__, __FILE__, __LINE__)
+//#define PACKET_ALLOCN(n) Packet::alloc((n), __func__, __FILE__, __LINE__)
+//#define PACKET_ALLOCDATA(n)   Packet::allocdata((n), __func__, __FILE__, __LINE__)
+#endif
+
 // Packet
 struct hdr_docsisccf {
     ds3hdr_ccf_t ccfhdr;
@@ -32,14 +43,15 @@ struct hdr_docsisccf {
     static int & offset() { return offset_; }
     static hdr_docsisccf * access(const Packet* p) { return (hdr_docsisccf*) p->access(offset_); }
 };
-#define HDR_DOCSISCCF(p)   (hdr_docsisccf::access(p))
+//#define HDR_DOCSIS_CCF(p)   （hdr_docsisccf::access(p))
+#define HDR_DOCSIS_CCF(p)   (PKTACCESSLOG(p,"HDR_DOCSIS_CCF"), hdr_docsisccf::access(p))
 
 #define PBMULTIPLIER_DEFAULT 8
 
 typedef struct _ns2tm_sendpkt_info_t {
     Packet * pkt;       /**< the Packet */
     size_t channel_id;  /**< channel id */
-    double time;        /**< the time to send te packet */
+    double time;        /**< the time to send the packet */
 } ns2tm_sendpkt_info_t;
 
 // a timer for sending the packet
@@ -60,7 +72,6 @@ private:
 class ds3_ccf_pack_ns2_t : public ds3_ccf_pack_t {
 public:
     ds3_ccf_pack_ns2_t(MacDocsisCM * cm1 = NULL, size_t pbmul = PBMULTIPLIER_DEFAULT) : ds3_ccf_pack_t(pbmul), cm(cm1), tmr_send(cm1), mac_dest(-1) {}
-
     void set_flow_type (unsigned char tbindex, int grant_type) { this->tbindex_ = tbindex; this->grant_type_ = grant_type; } /** for NS2 DOCSIS 2.0 module interface only */
 
     int process_packet (Packet *ns2pkt);
@@ -154,8 +165,11 @@ public:
     Packet * extract_ns2pkt (size_t pos);
 
     ds3_packet_buffer_ns2_t() {}
+
     virtual ssize_t block_size_at (size_t pos);
-    DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS_MINI(ds3_packet_buffer_ns2_t);
+    //DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS_MINI(ds3_packet_buffer_ns2_t);
+    virtual uint8_t & at(size_t i);
+    DS3_PKTCNT_DECLARE_MEMBER_FUNCTIONS_GPKT(ds3_packet_buffer_ns2_t);
 };
 
 inline ds3_packet_buffer_ns2_t::ds3_packet_buffer_ns2_t(ds3_packet_buffer_t *peer, size_t begin, size_t end)
