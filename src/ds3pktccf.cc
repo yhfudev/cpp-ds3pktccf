@@ -11,6 +11,8 @@
 
 #include "ds3pktccf.h"
 
+#define USE_DS3_LATESNDPIG 1
+
 const char *
 ds3_event2desc (ds3event_t e)
 {
@@ -560,12 +562,21 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
     for (itg = this->grantlst.begin(); itg != this->grantlst.end(); itg ++) {
         if (tmcur > itg->get_time()) {
             /* invalid grant, delete it */
+            std::cerr << "ds3ccf: Error invalid grant: current time=" << this->current_time()
+                << ", time=" << (*itg).get_time()
+                << ", size=" << (*itg).get_size()
+                << ", channel=" << (*itg).get_channel_id()
+                << std::endl;
             continue;
         }
         if (pktlst.size() < 1) {
             // empty
             break;
         }
+        std::cerr << "ds3ccf: process grant: time=" << (*itg).get_time()
+            << ", size=" << (*itg).get_size()
+            << ", channel=" << (*itg).get_channel_id()
+            << std::endl;
         szMax = itg->get_size();
         assert (szMax >= (size_t)ds3hdr_ccf_to_nbs(NULL, 0, NULL));
         szCur = ds3hdr_ccf_to_nbs(NULL, 0, NULL);
@@ -615,7 +626,12 @@ ds3_ccf_pack_t::process_packet (ds3packet_t *p)
         }
         if (szCur > (size_t)ds3hdr_ccf_to_nbs(NULL, 0, NULL)) {
             /* It's time to send the segment, and continue to next grant */
-            if (this->piggyback_inc > 0) {
+            if ( (this->piggyback_inc > 0)
+#if USE_DS3_LATESNDPIG
+                 && (itg == this->grantlst.end())
+#endif
+                )
+            {
                 ccfhdr.request = this->piggyback_inc / this->get_pbmultiplier();
                 this->piggyback_inc = 0;
             }
