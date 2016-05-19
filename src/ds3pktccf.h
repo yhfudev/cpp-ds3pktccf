@@ -193,18 +193,18 @@ private:
         } \
     } \
     if (NULL == peer) { \
-        assert (0); \
+        assert (NULL != peer); \
         return NULL; \
     } \
     if ((ssize_t)pos_peer > peer->size()) { \
         if (flg_peer_is_new) { free (peer); } \
         return NULL; \
     } \
-    if (begin_self >= this->size()) { \
+    if ((ssize_t)begin_self >= this->size()) { \
         /* do nothing */ \
         return (arg_peer); \
     } \
-    if (end_self > this->size()) { \
+    if ((ssize_t)end_self > this->size()) { \
         end_self = this->size(); \
     }
 

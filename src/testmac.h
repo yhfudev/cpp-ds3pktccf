@@ -17,7 +17,7 @@
  * @brief The DOCSIS MAC header structure
  */
 typedef struct _ds3hdr_mac_t {
-    uint16_t sequence; /**< The sequence # of the MAC packet */
+    uint32_t sequence; /**< The sequence # of the MAC packet */
     uint16_t length; /**< The length of the data in the MAC packet */
 } ds3hdr_mac_t;
 
@@ -74,7 +74,7 @@ private:
     ssize_t hdr_to_nbs (uint8_t *nbsbuf, size_t szbuf) { this->get_header(); return ds3hdr_mac_to_nbs (nbsbuf, szbuf, &(this->machdr)); }
     ds3hdr_mac_t machdr; /**< the MAC packet header */
 #if CCFDEBUG
-    uint8_t machdrbuf[4]; /**< buffer for MAC header */
+    uint8_t machdrbuf[sizeof(ds3hdr_mac_t)]; /**< buffer for MAC header */
 #endif
 };
 

@@ -305,10 +305,15 @@ int
 ds3_ccf_unpack_ns2_t::signify_packet (ds3_packet_buffer_t & macbuffer)
 {
     assert (macbuffer.size() > 0);
-#if 1
+#define USE_DS3NS2_BUF 0
+#if USE_DS3NS2_BUF
     ds3_packet_buffer_ns2_t *p = dynamic_cast<ds3_packet_buffer_ns2_t *>(macbuffer.get_buffer());
+    ds3_packet_buffer_gpkt_t *p0 = dynamic_cast<ds3_packet_buffer_gpkt_t *>(macbuffer.get_buffer());
+    assert (NULL != p0);
 #else
     ds3_packet_buffer_gpkt_t *p = dynamic_cast<ds3_packet_buffer_gpkt_t *>(macbuffer.get_buffer());
+    ds3_packet_buffer_ns2_t *p0 = dynamic_cast<ds3_packet_buffer_ns2_t *>(macbuffer.get_buffer());
+    assert (NULL == p0);
 #endif
     assert (NULL != p);
     if (NULL == p) {
@@ -316,7 +321,7 @@ ds3_ccf_unpack_ns2_t::signify_packet (ds3_packet_buffer_t & macbuffer)
         assert (0);
         return -1;
     }
-#if 1
+#if USE_DS3NS2_BUF
     Packet *ns2pkt = p->extract_ns2pkt(0);
 #else
     Packet *ns2pkt = gpkt_extract_ns2pkt(p, 0);

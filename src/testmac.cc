@@ -38,7 +38,8 @@ ssize_t ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethd
 ssize_t
 ds3hdr_mac_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * refhdr)
 {
-    ssize_t ret = sizeof(uint16_t) * 2;
+    ssize_t ret = sizeof(uint32_t) + sizeof(uint16_t);
+    uint32_t v32 = 0;
     uint16_t v16 = 0;
     uint8_t * p = nbsbuf;
 
@@ -56,9 +57,9 @@ ds3hdr_mac_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * refhdr)
         return -1;
     }
 
-    v16 = htons (refhdr->sequence);
-    memmove (p, &v16, sizeof (v16));
-    p += sizeof(v16);
+    v32 = htonl (refhdr->sequence);
+    memmove (p, &v32, sizeof (v32));
+    p += sizeof(v32);
 
     v16 = htons (refhdr->length);
     memmove (p, &v16, sizeof (v16));
@@ -81,7 +82,7 @@ ds3hdr_mac_to_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * refhdr)
 ssize_t
 ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethdr)
 {
-    ssize_t ret = sizeof(uint16_t) * 2;
+    ssize_t ret = sizeof(uint32_t) + sizeof(uint16_t);
     uint8_t * p = nbsbuf;
 
     if (szbuf == 0) {
@@ -98,11 +99,11 @@ ds3hdr_mac_from_nbs (uint8_t *nbsbuf, size_t szbuf, ds3hdr_mac_t * rethdr)
     }
     memset (rethdr, 0, sizeof (*rethdr));
 
-    rethdr->sequence = ntohs (*((uint16_t *)p));
-    p = p + 2;
+    rethdr->sequence = ntohl(*((uint32_t *)p));
+    p = p + sizeof(uint32_t);
 
     rethdr->length = ntohs (*((uint16_t *)p));
-    p = p + 2;
+    p = p + sizeof(uint16_t);
 
     return (ret);
 }

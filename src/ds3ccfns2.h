@@ -186,6 +186,7 @@ public:
     virtual ssize_t to_nbs (uint8_t *nbsbuf, size_t szbuf);
 
     void set_ns2packet (Packet *pkt1) { size_t sz = ns2pkt_get_size(pkt1); set_packet((ds3_packet_generic_t)pkt1, sz); }
+    //DS3_PKT_DECLARE_MEMBER_FUNCTIONS_GPKT (ds3_packet_buffer_ns2_t)
 };
 
 #define CCFMAGIC 0x0ccfccf0

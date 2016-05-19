@@ -145,6 +145,242 @@ compare_ccfpktp (ds3packet_ccf_t * i, ds3packet_ccf_t * j)
 }
 
 /**
+ * @brief find the next node of a continual sequence in a loop list
+ *
+ * @param pkglst: the list
+ * @param itins: the current node
+ *
+ * @return the first node, end() on error
+ */
+std::vector<ds3packet_ccf_t *>::iterator
+ds3pktlstccf_next (std::vector<ds3packet_ccf_t *> & pkglst, std::vector<ds3packet_ccf_t *>::iterator & itins)
+{
+    std::vector<ds3packet_ccf_t *>::iterator itnext = itins;
+    if (itins == pkglst.end()) {
+        return pkglst.end();
+    }
+    itnext ++;
+    if (itnext == pkglst.end()) {
+        itnext = pkglst.begin ();
+    }
+    if (itnext == itins) {
+        return pkglst.end();
+    }
+    return itnext;
+}
+
+std::vector<ds3packet_ccf_t *>::iterator
+ds3pktlstccf_next_pivot (std::vector<ds3packet_ccf_t *> & pkglst
+    , std::vector<ds3packet_ccf_t *>::iterator & itins
+    , std::vector<ds3packet_ccf_t *>::iterator & itp)
+{
+    std::vector<ds3packet_ccf_t *>::iterator itnext = ds3pktlstccf_next(pkglst, itins);
+    if (itnext == itp) {
+        return pkglst.end();
+    }
+    return itnext;
+}
+
+/**
+ * @brief find the prev node of a continual sequence in a loop list
+ *
+ * @param pkglst: the list
+ * @param itins: the current node
+ *
+ * @return the first node, end() on error
+ */
+std::vector<ds3packet_ccf_t *>::iterator
+ds3pktlstccf_prev (std::vector<ds3packet_ccf_t *> & pkglst, std::vector<ds3packet_ccf_t *>::iterator & itins)
+{
+    std::vector<ds3packet_ccf_t *>::iterator itnext = itins;
+    if (itins == pkglst.end()) {
+        return pkglst.end();
+    }
+    if (itins == pkglst.begin()) {
+        itnext = pkglst.end();
+    }
+    itnext --;
+    if (itnext == itins) {
+        return pkglst.end();
+    }
+    return itnext;
+}
+
+
+        //if ((*itins)->get_header().sequence >= 8191) {
+            /* ccf.sequence only has 13bits! = 8192 */
+
+/**
+ * @brief find the first node of a continual sequence in a loop list
+ *
+ * @param pkglst: the list
+ * @param itins: the current node
+ *
+ * @return the first node, end() on error
+ */
+std::vector<ds3packet_ccf_t *>::iterator
+ds3pktlstccf_find_first (std::vector<ds3packet_ccf_t *> & pkglst, std::vector<ds3packet_ccf_t *>::iterator & itins)
+{
+    // find the left most and right most positions which have continual sequence number
+    std::vector<ds3packet_ccf_t *>::iterator itprev = itins;
+    std::vector<ds3packet_ccf_t *>::iterator itleft = itins;
+
+    itprev = ds3pktlstccf_prev (pkglst, itins);
+    if (pkglst.end() == itprev) {
+        assert(pkglst.size() == 1);
+        return itins;
+    }
+    for (; (itleft != itins) && (itleft != pkglst.end()); itleft = ds3pktlstccf_prev (pkglst, itleft)) {
+        if ((*itleft)->get_header().sequence + 1 != (*itprev)->get_header().sequence) {
+            break;
+        }
+        itprev = itleft;
+    }
+    if (itleft != pkglst.end()) {
+        itleft = ds3pktlstccf_next (pkglst, itleft);
+    } else {
+        if (itprev != itleft) {
+            if ((*itleft)->get_header().sequence + 1 != (*itprev)->get_header().sequence) {
+                itleft = itprev;
+            }
+        }
+    }
+    return itleft;
+}
+
+/**
+ * @brief find the first node of a continual sequence in a loop list
+ *
+ * @param pkglst: the list
+ * @param itins: the current node
+ *
+ * @return the first node, end() on error
+ */
+std::vector<ds3packet_ccf_t *>::iterator
+ds3pktlstccf_find_last (std::vector<ds3packet_ccf_t *> & pkglst, std::vector<ds3packet_ccf_t *>::iterator & itins)
+{
+    // find the left most and right most positions which have continual sequence number
+    std::vector<ds3packet_ccf_t *>::iterator itprev = itins;
+    std::vector<ds3packet_ccf_t *>::iterator itright = itins;
+    itprev = itright;
+    itright = ds3pktlstccf_next (pkglst, itright);
+    for (; (itright != itins) && (itright != pkglst.end()); ) {
+        if ((*itprev)->get_header().sequence + 1 != (*itright)->get_header().sequence) {
+            break;
+        }
+        itprev = itright;
+        itright = ds3pktlstccf_next (pkglst, itright);
+    }
+
+    return itright;
+}
+
+std::vector<ds3packet_ccf_t *>::iterator
+ds3pktlstccf_erase (std::vector<ds3packet_ccf_t *> & pkglst, std::vector<ds3packet_ccf_t *>::iterator & itins)
+{
+    std::vector<ds3packet_ccf_t *>::iterator itret;
+    itret = pkglst.erase(itins);
+    if (pkglst.end() == itret) {
+        if (pkglst.size() > 0) {
+            itret = pkglst.begin();
+        }
+    }
+    return itret;
+}
+
+// erase the nodes between [itb, ite)
+std::vector<ds3packet_ccf_t *>::iterator
+ds3pktlstccf_erase (std::vector<ds3packet_ccf_t *> & pkglst
+    , std::vector<ds3packet_ccf_t *>::iterator & itb
+    , std::vector<ds3packet_ccf_t *>::iterator & ite)
+{
+    std::vector<ds3packet_ccf_t *>::iterator itret;
+    itret = pkglst.erase(itb);
+    itb = itret;
+    for ( ; (pkglst.end() == itret) && (itret != ite); ) {
+        itret = pkglst.erase(itret);
+    }
+    if (pkglst.end() == itret) {
+        if (pkglst.size() > 0) {
+            itret = pkglst.begin();
+        }
+    }
+    return itret;
+}
+
+// the item between [itleft, itright)
+ssize_t
+ds3pktlstccf_distance (std::vector<ds3packet_ccf_t *> & pkglst
+    , std::vector<ds3packet_ccf_t *>::iterator itleft
+    , std::vector<ds3packet_ccf_t *>::iterator itright)
+{
+    size_t off1 = (itleft - pkglst.begin());
+    size_t off2 = (itright - pkglst.begin());
+    if (off1 <= off2) {
+        return off2 - off1;
+    }
+    return (off1 + (pkglst.size() - off2));
+}
+
+
+// erase the node between it1st and itleft, then update the value of these itxxx
+void
+ds3pktlstccf_erase_update (std::vector<ds3packet_ccf_t *> & pkglst
+    , std::vector<ds3packet_ccf_t *>::iterator & it1st
+    , std::vector<ds3packet_ccf_t *>::iterator & itleft
+    , std::vector<ds3packet_ccf_t *>::iterator & itright
+    )
+{
+    std::cout << "pkg end-begin=" << (pkglst.end() - pkglst.begin()) << std::endl;
+    size_t off1 = (itleft - pkglst.begin());
+    size_t off2 = (itright - pkglst.begin());
+    size_t off3 = (it1st - pkglst.begin());
+    size_t numrm = 0;
+    if (pkglst.size() > 0) {
+        if (off2 >= off3) {
+            /* | -- 1st XXX left -- right -- |  */
+            numrm = (off1 - off3);
+            assert (numrm == ds3pktlstccf_distance(pkglst, it1st, itleft));
+        } else {
+            if (off1 >= off3) {
+                /* | -- right -- 1st XXX left -- |  */
+                numrm = (off1 - off3);
+                assert (numrm == ds3pktlstccf_distance(pkglst, it1st, itleft));
+            } else {
+                /* | XX left -- right -- 1st XX |  */
+                numrm = (off1 + (pkglst.size() - off3));
+                assert (numrm == ds3pktlstccf_distance(pkglst, pkglst.begin(), itleft) + ds3pktlstccf_distance(pkglst, itright, pkglst.end()));
+            }
+        }
+    }
+    ds3pktlstccf_erase (pkglst, it1st, itleft);
+    if (pkglst.size() < 1) {
+        assert (pkglst.begin() == pkglst.end());
+        itleft = itright = pkglst.end();
+    } else {
+        if (off2 >= off3) {
+            /* | -- 1st XXX left -- right -- |  */
+            numrm = (off1 - off3);
+            itleft = pkglst.begin() + (off1 - numrm);
+            itright = pkglst.begin() + (off2 - numrm);
+        } else {
+            if (off1 >= off3) {
+                /* | -- right -- 1st XXX left -- |  */
+                numrm = (off1 - off3);
+                itleft = pkglst.begin() + (off3 - numrm);
+                itright = pkglst.begin() + off2;
+            } else {
+                /* | XX left -- right -- 1st XX |  */
+                numrm = (off1 + (pkglst.size() - off3));
+                assert (off3 >= pkglst.size());
+                itleft = pkglst.begin() + (off3 - pkglst.size());
+                itright = pkglst.begin() + (off2 - (off3 - pkglst.size()));
+            }
+        }
+    }
+}
+
+/**
  * @brief push a segment received for unpacking, try to extract DOCSIS MAC packet(s) from CCF segments
  *
  * @param p : [in] a CCF segment be pushed into the queue
@@ -167,7 +403,11 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
 
     ds3packet_ccf_t* pktin = dynamic_cast<ds3packet_ccf_t *>(p);
     assert (NULL != pktin);
-
+#if CCFDEBUG
+    if (pktin->get_header().sequence == 8191) {
+        std::cout << "got seq 8191!" << std::endl;
+    }
+#endif
     // add p to sortedPackets
     std::vector<ds3packet_ccf_t *>::iterator itins = pkglst.begin();
     if (NULL != p) {
@@ -189,41 +429,10 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
     }
 
     // find the left most and right most positions which have continual sequence number
-    std::vector<ds3packet_ccf_t *>::iterator itprev = itins;
     std::vector<ds3packet_ccf_t *>::iterator itleft = itins;
-
-    itprev = itleft;
-    if (itleft != pkglst.begin()) {
-        itleft --;
-    }
-    for (; itleft != pkglst.begin(); itleft --) {
-        if ((*itleft)->get_header().sequence + 1 != (*itprev)->get_header().sequence) {
-            break;
-        }
-        itprev = itleft;
-    }
-    if (itleft != pkglst.begin()) {
-        itleft ++;
-    } else {
-        if (itprev != itleft) {
-            if ((*itleft)->get_header().sequence + 1 != (*itprev)->get_header().sequence) {
-                itleft = itprev;
-            }
-        }
-    }
-
     std::vector<ds3packet_ccf_t *>::iterator itright = itins;
-    itprev = itright;
-    if (itright != pkglst.end()) {
-        itright ++;
-    }
-    for (; itright != pkglst.end(); ) {
-        if ((*itprev)->get_header().sequence + 1 != (*itright)->get_header().sequence) {
-            break;
-        }
-        itprev = itright;
-        itright ++;
-    }
+    itleft = ds3pktlstccf_find_first (pkglst, itins);
+    itright = ds3pktlstccf_find_last (pkglst, itins);
 
     // debug:
     //assert (itright == pkglst.end());
@@ -244,7 +453,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
     bool flg_data_right = false;  /* use the right data of procpos_next to fill hdrbuf */
 
     // find the first segment contains the MAC header
-    for (; itleft != itright; ) {
+    for (; (itleft != pkglst.end()) /* && (itleft != itright)*/; ) {
 
         if ((*itleft)->get_header().pfi == 1) {
             // find the next unprocessed MAC header
@@ -270,16 +479,11 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
 
                 this->recycle_packet( *itleft );
 
-                size_t off1 = (itleft - pkglst.begin());
-                size_t off2 = (itright - pkglst.begin());
-                assert (off2 >= off1);
-                pkglst.erase(itleft);
-                if (pkglst.size() < 1) {
-                    assert (pkglst.begin() == pkglst.end());
-                    itleft = itright = pkglst.end();
-                } else {
-                    itleft = pkglst.begin() + (off1);
-                    itright = pkglst.begin() + (off2 - 1);
+                ssize_t dis = ds3pktlstccf_distance (pkglst, itleft, itright);
+                itleft = ds3pktlstccf_erase (pkglst, itleft);
+                itright = itleft;
+                for (size_t i = 0; i + 1 < dis; i ++) {
+                    itright = ds3pktlstccf_next_pivot (pkglst, itright, itleft);
                 }
                 continue;
             }
@@ -298,7 +502,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             if ((*itleft)->get_header().pfi == 0) {
                 // the whole segment is part of packet, not MAC header!
                 // we should skip to next one!
-                itleft ++;
+                itleft = ds3pktlstccf_next_pivot (pkglst, itleft, itright);
                 continue;
             }
 
@@ -317,12 +521,12 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
             if (szmhdr <= 0) {
                 // no enough header bytes
                 // wait for next one?
-                itleft ++;
+                itleft = ds3pktlstccf_next_pivot (pkglst, itleft, itright);
                 continue;
             } else {
                 // get the header successfully
                 if (hdrbuf.size() < (szmhdr)) {
-                    itleft ++;
+                    itleft = ds3pktlstccf_next_pivot (pkglst, itleft, itright);
                     continue;
                 }
             }
@@ -351,7 +555,7 @@ ds3_ccf_unpack_t::process_packet (ds3packet_t *p)
                 if ((*itleft)->get_header().pfi == 1) {
                     // Error: impossible to here! or there's error in the packet
                     flg_corrupted = true;
-#if DEBUG
+#if CCFDEBUG
 std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ", szmhdr=" << szmhdr << " <=0, and pfi=1" << std::endl;
 #endif
                 } else {
@@ -365,11 +569,12 @@ std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ", 
                     if ((*itleft)->get_header().pfi == 1) {
                         // Error: corrupted packet
                         flg_corrupted = true;
-#if DEBUG
+#if CCFDEBUG
 std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ") < szmhdr=" << szmhdr
     << ", and pfi=1"
     << ", read offset =" << (*itleft)->get_procpos_next()
     << std::endl;
+assert (0);
 #endif
                     } else {
                         // no enough header bytes
@@ -392,32 +597,20 @@ std::cout << "Error, corrupted CCF found: hdrbuf.size(=" << hdrbuf.size() << ") 
                 DS3PKGLST_REMOVE_FAIL ();
 #else // 2
                 if (it1st != itleft) {
+                    /* delete nodes in a loop list */
                     if ((*it1st)->get_procpos_prev () > 0) {
                         (*it1st)->set_procpos_next ((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos_next((*it1st)->size());
-                        it1st ++;
+                        it1st = ds3pktlstccf_next_pivot (pkglst, it1st, itleft);
                     }
-                    if (it1st != itleft) {
+                    if ((it1st != itleft) && (it1st != pkglst.begin())) { /*FIXME: delete nodes in a loop list!*/
                         std::vector<ds3packet_ccf_t *>::iterator ittmp = it1st;
-                        for (; ittmp != itleft; ittmp ++) {
-#if DEBUG
+                        for (; ittmp != itleft; ittmp = ds3pktlstccf_next_pivot (pkglst, ittmp, itright)) {
+#if CCFDEBUG
 std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
 #endif
                             this->drop_packet( *ittmp );
                         }
-
-                        std::cout << "pkg end-begin=" << (pkglst.end() - pkglst.begin()) << std::endl;
-                        size_t off1 = (itleft - pkglst.begin());
-                        size_t off2 = (itright - pkglst.begin());
-                        size_t numrm = (itleft - it1st);
-                        assert (off2 >= off1);
-                        pkglst.erase (it1st, itleft);
-                        if (pkglst.size() < 1) {
-                            assert (pkglst.begin() == pkglst.end());
-                            itleft = itright = pkglst.end();
-                        } else {
-                            itleft = pkglst.begin() + (off1 - numrm);
-                            itright = pkglst.begin() + (off2 - numrm);
-                        }
+                        ds3pktlstccf_erase_update (pkglst, it1st, itleft, itright);
                     }
                 }
                 it1st = itleft;
@@ -436,7 +629,7 @@ std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
 #endif // 2
             }
             if (flg_continue) {
-                itleft ++;
+                itleft = ds3pktlstccf_next_pivot (pkglst, itleft, itright);
                 continue;
             }
         }
@@ -474,28 +667,16 @@ std::cout << "Error, corrupted CCF dropped!!!" << std::endl;
                         // this is the start of segment, and it has other content at the begining,
                         // so we just set the last position to max position:
                         (*it1st)->set_procpos_next ((*it1st)->get_content_ref ().size()); // (*it1st)->set_procpos_next ((*it1st)->size());
-                        it1st ++;
+                        it1st = ds3pktlstccf_next_pivot (pkglst, it1st, itleft);
                     }
-                    if (it1st != itleft) {
-
+                    if ((it1st != itleft) && (it1st != pkglst.end())) {
+                        /* delete nodes in a loop list! */
                         std::vector<ds3packet_ccf_t *>::iterator ittmp = it1st;
                         for (; ittmp != itleft; ittmp ++) {
                             this->recycle_packet( *ittmp );
                         }
 
-                        std::cout << "pkg end-begin=" << (pkglst.end() - pkglst.begin()) << std::endl;
-                        size_t off1 = (itleft - pkglst.begin());
-                        size_t off2 = (itright - pkglst.begin());
-                        size_t numrm = (itleft - it1st);
-                        assert (off2 >= off1);
-                        pkglst.erase (it1st, itleft);
-                        if (pkglst.size() < 1) {
-                            assert (pkglst.begin() == pkglst.end());
-                            itleft = itright = pkglst.end();
-                        } else {
-                            itleft = pkglst.begin() + (off1 - numrm);
-                            itright = pkglst.begin() + (off2 - numrm);
-                        }
+                        ds3pktlstccf_erase_update (pkglst, it1st, itleft, itright);
                     }
                 }
                 it1st = itleft;
