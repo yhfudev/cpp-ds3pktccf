@@ -1,9 +1,9 @@
 DS3PKTCCF {#mainpage}
 =========
 
-# DOCSIS 3.1 Continuous Concatenation and Fragmentation module
+# DOCSIS 3.0 Continuous Concatenation and Fragmentation module
 
-DS3PKTCCF is an C++ library for the [DOCSIS 3.1](http://www.cablelabs.com/specs/specification-search/?cat=docsis) Continuous Concatenation and Fragmentation(CCF).
+DS3PKTCCF is an C++ library for the [DOCSIS 3.0](http://www.cablelabs.com/specs/specification-search/?cat=docsis) Continuous Concatenation and Fragmentation(CCF).
 The library supply the entire set of API methods including:
 
 * **pack** - pack all of the MAC packet into CCF segments for CM sending to CMTS.
